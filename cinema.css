@@ -1,0 +1,40 @@
+.cinema-launch{display:block;border:0;border-bottom:1px solid #5be7ff55;background:none;padding:9px 0;margin-top:12px;color:#b8eeff;font-size:11px;text-align:left;line-height:1.7}
+.presenter-toggle{font-size:17px}
+.cinema-active .header,.cinema-active .narrative,.cinema-active .build-status,.cinema-active .scene-caption,.cinema-active .overview,.cinema-active .donor-note,.cinema-active .timeline,.cinema-active .presenter-hint{visibility:hidden;pointer-events:none}
+.cinema-active .viewport{inset:0;pointer-events:none}
+.cinema{position:fixed;inset:0;z-index:30;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;--cinema-accent:#8aebff}
+.cinema[data-kind=studio]{--cinema-accent:#ffd379}
+.cinema-vignette{position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#020711 0%,#020711ee 6%,#02071144 28%,transparent 60%,#020711bb 100%),linear-gradient(90deg,#020711bb 0%,transparent 62%);box-shadow:inset 0 0 100px #0007}
+.cinema[data-kind=intro][data-step="0"] .cinema-vignette{background:linear-gradient(0deg,#020711f5,#02071188 60%,#020711dd)}
+.cinema-top{display:flex;align-items:center;justify-content:space-between;padding:25px 4vw;color:#7c9cab;font-size:9px;letter-spacing:1.5px;gap:14px}
+.cinema-top button{pointer-events:auto;background:#091827cc;border:1px solid #659dbb44;border-radius:30px;padding:10px 16px;font-size:10px;letter-spacing:0;color:#b7d6e6;display:flex;align-items:center;gap:15px}
+.cinema-top button span{font-size:20px;line-height:12px}
+.cinema-content{position:absolute;left:5vw;bottom:134px;max-width:min(760px,75vw);text-shadow:0 2px 22px #000;pointer-events:none}
+.cinema-kicker{font-size:10px;letter-spacing:2px;line-height:1.8;color:var(--cinema-accent);margin:0 0 18px}
+.cinema h2{white-space:pre-line;font-size:clamp(32px,4.6vw,74px);line-height:1.12;letter-spacing:-1.9px;font-weight:500;margin:0 0 20px;text-wrap:balance;color:#eef8ff}
+.cinema-copy{font-size:clamp(12px,1.1vw,17px);line-height:1.85;max-width:610px;color:#adc8d6;margin:0}
+.cinema-status{display:inline-block;margin-bottom:20px;border:1px solid #ffd37966;border-radius:4px;padding:8px 11px;font-size:9px;color:#ffdda0;background:#18222bee;line-height:1.6;letter-spacing:.7px}
+.cinema[data-kind=studio] .cinema-content{max-width:32vw;bottom:145px}
+.cinema[data-kind=studio] h2{font-size:clamp(28px,3vw,48px)}
+.cinema[data-kind=studio] .cinema-vignette{background:linear-gradient(0deg,#020711 0%,#02071166 15%,transparent 48%,#02071177 100%),linear-gradient(90deg,#020711f2 0%,#020711bb 28%,transparent 52%)}
+.cinema-controls{position:absolute;left:4vw;right:4vw;bottom:26px;min-height:58px;display:flex;align-items:center;gap:18px;padding-top:17px;border-top:1px solid #7db8d14d;pointer-events:auto}
+.cinema-controls button{border:1px solid #6e9dbd44;background:#0b1a29dd;border-radius:5px;padding:11px 16px;color:#b2d1e0;font-size:11px;line-height:1.6}
+.cinema-controls #cinema-next{color:var(--cinema-accent);border-color:color-mix(in srgb,var(--cinema-accent) 60%,transparent);min-width:180px;text-align:center;background:color-mix(in srgb,var(--cinema-accent) 10%,#081522)}
+.cinema-position{display:flex;align-items:center;gap:18px;margin-right:auto;flex-shrink:0}
+#cinema-count{font-size:10px;color:#86b0c7;font-variant-numeric:tabular-nums}
+.cinema-dots{display:flex;gap:8px}
+.cinema-dots button{width:24px;height:26px;padding:0;background:none;border:0;position:relative}
+.cinema-dots button:after{content:'';display:block;width:24px;height:3px;border-radius:3px;background:#355269}
+.cinema-dots button[aria-pressed=true]:after{background:var(--cinema-accent);box-shadow:0 0 14px color-mix(in srgb,var(--cinema-accent) 50%,transparent)}
+.cinema-progress{position:absolute;left:0;right:0;top:-1px;height:1px;transform:scaleX(var(--progress,0));transform-origin:left;background:var(--cinema-accent);box-shadow:0 0 9px var(--cinema-accent)}
+.cue-enter .cinema-kicker,.cue-enter h2,.cue-enter .cinema-copy{animation:cinema-copy-in 900ms both cubic-bezier(.2,.7,.2,1)}
+.cue-enter h2{animation-delay:80ms}.cue-enter .cinema-copy{animation-delay:160ms}
+@keyframes cinema-copy-in{from{opacity:0;transform:translateY(18px);filter:blur(5px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.presenter-mode .timeline,.presenter-mode .build-status,.presenter-mode .scene-caption,.presenter-mode .overview,.presenter-mode .donor-note,.presenter-mode .autoplay{display:none}
+.presenter-mode .viewport{bottom:0}.presenter-mode .header{opacity:.35;transition:opacity .2s}.presenter-mode .header:hover,.presenter-mode .header:focus-within{opacity:1}
+.presenter-hint{position:fixed;bottom:17px;left:4.6vw;font-size:9px;letter-spacing:.6px;color:#7a9daf;z-index:12;pointer-events:none}
+.no-motion .cue-enter .cinema-kicker,.no-motion .cue-enter h2,.no-motion .cue-enter .cinema-copy{animation:none}
+@media(max-width:1000px){.cinema[data-kind=studio] .cinema-content{max-width:35vw}.cinema-controls{gap:10px}.cinema-position{gap:10px}.cinema-controls #cinema-next{min-width:150px}}
+@media(max-width:700px){.cinema-top{padding:16px 5vw;font-size:7px;letter-spacing:.7px}.cinema-top button{font-size:9px;padding:8px 10px;gap:8px}.cinema-content,.cinema[data-kind=studio] .cinema-content{left:6vw;right:6vw;bottom:155px;max-width:none}.cinema h2,.cinema[data-kind=studio] h2{font-size:clamp(28px,7vw,42px);letter-spacing:-.7px;margin-bottom:12px}.cinema-kicker{font-size:8px;letter-spacing:1px;margin-bottom:12px}.cinema-copy{font-size:11px;line-height:1.75}.cinema-status{font-size:7px;margin-bottom:12px;padding:6px 8px}.cinema-controls{bottom:17px;left:5vw;right:5vw;flex-wrap:wrap;gap:9px;padding-top:11px}.cinema-position{width:100%;justify-content:space-between;margin:0}.cinema-controls button{font-size:9px;padding:9px 10px}.cinema-controls #cinema-next{margin-left:auto;min-width:0;max-width:55%}.cinema-controls #cinema-play{padding-inline:8px}.cinema[data-kind=studio] .cinema-vignette{background:linear-gradient(0deg,#020711 0%,#020711f0 33%,#02071133 60%,#02071155 100%)}.cinema-launch{font-size:10px;margin-top:6px;padding:5px 0;grid-column:1/-1}.presenter-mode .viewport{bottom:260px}.presenter-mode .narrative{bottom:45px}.presenter-hint{font-size:8px}.cinema-active.presenter-mode .viewport{bottom:0}}
+@media(max-height:640px) and (min-width:701px){.cinema-content,.cinema[data-kind=studio] .cinema-content{bottom:105px}.cinema h2{font-size:38px}.cinema-copy{font-size:12px}.cinema-status{margin-bottom:10px}.cinema-kicker{margin-bottom:10px}.cinema-controls{bottom:15px}}
+@media(prefers-reduced-motion:reduce){.cue-enter .cinema-kicker,.cue-enter h2,.cue-enter .cinema-copy{animation:none}}

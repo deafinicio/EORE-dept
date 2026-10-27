@@ -1,234 +1,156 @@
-'use strict';
-
-(() => {
-  const slides = [...document.querySelectorAll('.slide')];
-  const $ = (selector) => document.querySelector(selector);
-  const $$ = (selector) => [...document.querySelectorAll(selector)];
-  const pad = (number) => String(number).padStart(2, '0');
-  const dialogOpen = () => document.querySelector('dialog[open]');
-  let current = 0;
-  let selectedRole = null;
-
-  const missions = [
-    ['Правила простими словами', 'Допомагаємо розібратися в ризиках, пов’язаних із мінами та вибухонебезпечними предметами.'],
-    ['Ситуації з повсякденного життя', 'Обговорюємо безпечну поведінку через зрозумілі приклади та запитання учасників.'],
-    ['Зрозуміла інформація для громад', 'Допомагаємо громадам отримувати інформацію про ризики та правила безпечної поведінки.'],
-  ];
-  const roles = {
-    communication: { number: '01', title: 'Спілкування з учасниками', description: 'Допомагати людям почуватися впевненіше на заходах і знаходити потрібну інформацію.', example: 'Допомога команді у зустрічі та супроводі учасників заходу.', interest: 'спілкування з учасниками' },
-    events: { number: '02', title: 'Організація заходів', description: 'Долучатися до підготовки подій і допомагати команді з організаційними деталями.', example: 'Підготовка простору та матеріалів до погодженого заходу.', interest: 'організація заходів' },
-    creative: { number: '03', title: 'Фото, відео та дизайн', description: 'Застосовувати творчі вміння, щоб розповідати про роботу команди та робити інформацію зрозумілішою.', example: 'Допомога з оформленням погодженого матеріалу або фото заходу з дотриманням правил згоди на зйомку.', interest: 'фото, відео та дизайн' },
-    education: { number: '04', title: 'Освітня робота після підготовки', description: 'Навчатися пояснювати правила безпечної поведінки та працювати з аудиторією.', example: 'Знайомство з матеріалами й необхідною підготовкою. Освітні завдання - лише після відповідного навчання та погодження.', interest: 'освітня робота' },
-  };
-  const steps = [
-    ['Просто поговорімо', 'Підійди до представника відділу після виступу. Розкажи, що тебе зацікавило, і постав свої запитання.'],
-    ['Знайдемо спільне', 'Обговоримо твої інтереси, вміння, доступний час і поточні потреби команди. Разом визначимо можливу роль.'],
-    ['Підготуємося до ролі', 'З’ясуємо, яке знайомство з правилами та навчання потрібне для обраних завдань. Підготовка залежить від ролі.'],
-    ['Спробуємо на практиці', 'Домовимося про перше конкретне завдання, його обсяг і підтримку команди. Після цього обговоримо враження та наступні кроки.'],
-  ];
-  const notes = [
-    'Почніть із короткого знайомства: хто ви і що робить відділ. Зверніться до аудиторії: «Які ваші вміння могли б допомогти іншим?» Запросіть разом переглянути можливості участі. Не перевантажуйте вступ історією проєктів чи статистикою.',
-    'Поясніть фокус інформування про ризики. Перемкніть три пункти, додаючи приклади з власної практики без персональних даних. Чітко поясніть різницю між освітньою роботою та операціями з вибухонебезпечними предметами. Фото ілюструє захід у 2024 році.',
-    'Попросіть аудиторію назвати близький їм інтерес і відкрийте відповідну роль. Це приклади можливого внеску. Наявність конкретного завдання, умови участі та необхідну підготовку погоджуйте індивідуально. Освітню роботу пропонуйте лише після відповідного навчання.',
-    'Розкажіть один короткий, правдивий приклад розвитку вмінь у команді. Відкрийте відповідний пункт. Уникайте обіцянок гарантованої кар’єри, сертифікатів чи інших переваг, якщо вони не погоджені організацією.',
-    'Пройдіть чотири кроки. Поясніть, що для першої розмови не потрібно одразу визначати довгострокові зобов’язання. Умови, зокрема участь неповнолітніх, узгоджуйте за чинними правилами організації.',
-    'Завершіть конкретним запрошенням: де саме представники відділу стоятимуть після виступу. Дайте час на запитання. Кнопка відкриває приклад початку розмови, а не надсилає заявку. Для онлайн-залучення спершу додайте погоджений контакт у site.config.js.',
-  ];
-
-  function readHash() {
-    const index = slides.findIndex((slide) => `#${slide.id}` === location.hash);
-    return index >= 0 ? index : 0;
+import { chapters, elements, roles, FINAL_INDEX } from './story.js';
+import { createInspector } from './inspector.js';
+import { createCinema } from './cinema.js';
+import { createPrintDeck } from './print.js';
+const $ = id => document.getElementById(id);
+const pad = number => String(number).padStart(2, '0');
+let index = 0, scene = null, cinema, autoTimer = null, selectedRole = null, showingOverview = false;
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = motionQuery.matches;
+function stopAuto() {
+  clearInterval(autoTimer); autoTimer = null;
+  $('autoplay').setAttribute('aria-pressed', 'false'); $('play-icon').textContent = '▷'; $('play-label').textContent = 'Автопоказ';
+}
+const inspector = createInspector({
+  onOpen: () => { stopAuto(); cinema?.close(); $('help-dialog').close(); },
+  getRole: () => selectedRole,
+  onRole: id => { selectedRole = id; updateInterest(); },
+});
+cinema = createCinema({
+  isReduced: () => reduced,
+  onShot: (kind, step, shot) => { stopAuto(); scene?.cinematicShot(kind, step, shot); },
+  onExit: () => { scene?.clearCinematic(); const chapter = chapters[index]; scene?.setChapter(index, chapter.camera, chapter.look, { instant: true }); },
+  onComplete: kind => { if (kind === 'intro') go(1); else inspector.join(); },
+});
+function updateInterest() {
+  $('quick-actions').replaceChildren();
+  if (index === FINAL_INDEX && selectedRole) {
+    const label = document.createElement('p'); label.className = 'interest-label'; label.id = 'selected-interest'; label.textContent = `Твій інтерес: ${roles.find(role => role.id === selectedRole).interest}`; $('quick-actions').append(label);
   }
-
-  function showSlide(index, { history = 'push', focus = true } = {}) {
-    if (!Number.isInteger(index) || index < 0 || index >= slides.length) return;
-    // Close before hiding the old screen so focus never returns to a hidden control.
-    $$('dialog[open]').forEach((dialog) => dialog.close());
-    current = index;
-    slides.forEach((slide, slideIndex) => { slide.hidden = slideIndex !== current; });
-    document.body.classList.toggle('is-finale', current === slides.length - 1);
-    $('#current-index').textContent = pad(current + 1);
-    $('#current-label').textContent = slides[current].dataset.label;
-    $('#prev-button').disabled = current === 0;
-    $('#next-button').disabled = current === slides.length - 1;
-    $$('.progress-nav button, .overview-grid button').forEach((button) => {
-      if (Number(button.dataset.go) === current) button.setAttribute('aria-current', 'step');
-      else button.removeAttribute('aria-current');
-    });
-    if (history !== 'none') {
-      const hash = `#${slides[current].id}`;
-      if (location.hash !== hash) window.history[history === 'replace' ? 'replaceState' : 'pushState'](null, '', hash);
-    }
-    document.title = `${slides[current].dataset.label} · Відділ протимінної діяльності`;
-    $('#slide-announcement').textContent = `Слайд ${current + 1} із ${slides.length}. ${slides[current].dataset.label}`;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    // Native fragment navigation may scroll after popstate/hashchange.
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    if (focus) slides[current].querySelector('h1, h2').focus({ preventScroll: true });
-  }
-
-  $$('[data-go]').forEach((button) => button.addEventListener('click', () => showSlide(Number(button.dataset.go))));
-  $('#prev-button').addEventListener('click', () => showSlide(current - 1));
-  $('#next-button').addEventListener('click', () => showSlide(current + 1));
-  $('.brand').addEventListener('click', (event) => { event.preventDefault(); showSlide(0); });
-  $('.skip-link').addEventListener('click', (event) => {
-    event.preventDefault();
-    slides[current].querySelector('h1, h2').focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function update() {
+  const chapter = chapters[index], count = Math.min(elements.length, index);
+  document.documentElement.style.setProperty('--active', chapter.accent);
+  document.body.dataset.chapter = chapter.id;
+  $('eyebrow').textContent = `${pad(index + 1)} / ${index ? chapter.name.toUpperCase() : 'ЗНАЙОМСТВО З КОМАНДОЮ'}`;
+  const accent = document.createElement('em'); accent.textContent = chapter.title[1]; $('title').replaceChildren(document.createTextNode(chapter.title[0]), document.createElement('br'), accent);
+  $('description').textContent = chapter.description;
+  $('layer-count').textContent = pad(count); $('layer-caption').textContent = count === 4 ? 'Усі складові на платформі' : count ? elements[count - 1].name : 'Початок знайомства';
+  $('layer-indicator').querySelectorAll('i').forEach((bar, i) => bar.classList.toggle('on', i < count));
+  $('step-counter').textContent = `${pad(index + 1)} / ${pad(chapters.length)}`;
+  $('chapters').querySelectorAll('button').forEach((button, i) => {
+    button.classList.toggle('active', i === index); button.classList.toggle('passed', i < index);
+    if (i === index) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
   });
-  window.addEventListener('popstate', () => showSlide(readHash(), { history: 'none' }));
-  window.addEventListener('hashchange', () => {
-    const index = readHash();
-    if (current !== index) showSlide(index, { history: 'none' });
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-  });
-  window.addEventListener('load', () => window.scrollTo({ top: 0, behavior: 'instant' }));
-
-  function selectMission(index, focus = false) {
-    $$('[data-mission]').forEach((button, buttonIndex) => {
-      button.setAttribute('aria-selected', String(buttonIndex === index));
-      button.tabIndex = buttonIndex === index ? 0 : -1;
-      if (focus && buttonIndex === index) button.focus();
-    });
-    $('#mission-panel').setAttribute('aria-labelledby', `mission-tab-${index}`);
-    $('#mission-panel h3').textContent = missions[index][0];
-    $('#mission-panel p').textContent = missions[index][1];
-  }
-  $$('[data-mission]').forEach((button) => {
-    button.addEventListener('click', () => selectMission(Number(button.dataset.mission)));
-    button.addEventListener('keydown', (event) => {
-      const index = Number(button.dataset.mission);
-      const directions = { ArrowRight: (index + 1) % 3, ArrowLeft: (index + 2) % 3, Home: 0, End: 2 };
-      if (event.key in directions) {
-        event.preventDefault(); event.stopPropagation(); selectMission(directions[event.key], true);
-      }
-    });
-  });
-
-  $$('[data-role]').forEach((button) => button.addEventListener('click', () => {
-    selectedRole = button.dataset.role;
-    const role = roles[selectedRole];
-    $$('[data-role]').forEach((option) => option.setAttribute('aria-pressed', String(option === button)));
-    $('#role-number').textContent = role.number;
-    $('#role-title').textContent = role.title;
-    $('#role-description').textContent = role.description;
-    $('#role-example').textContent = role.example;
-    $('#selected-interest').hidden = false;
-    $('#selected-interest').textContent = `Твій інтерес: ${role.interest}`;
-  }));
-  $$('[data-benefit]').forEach((button) => button.addEventListener('click', () => {
-    const expanded = button.getAttribute('aria-expanded') === 'true';
-    $$('[data-benefit]').forEach((option) => {
-      const open = option === button && !expanded;
-      option.setAttribute('aria-expanded', String(open));
-      option.querySelector('span').textContent = open ? '−' : '+';
-      document.getElementById(option.getAttribute('aria-controls')).hidden = !open;
-    });
-  }));
-  $$('[data-step]').forEach((button) => button.addEventListener('click', () => {
-    const index = Number(button.dataset.step);
-    $$('[data-step]').forEach((option) => option.setAttribute('aria-pressed', String(option === button)));
-    $('#step-number').textContent = pad(index + 1);
-    $('#step-title').textContent = steps[index][0];
-    $('#step-description').textContent = steps[index][1];
-  }));
-
-  function openDialog(selector) {
-    $$('dialog[open]').forEach((dialog) => dialog.close());
-    $(selector).showModal();
-  }
-  $$('[data-close]').forEach((button) => button.addEventListener('click', () => button.closest('dialog').close()));
-  $$('dialog').forEach((dialog) => dialog.addEventListener('click', (event) => {
-    const rect = dialog.getBoundingClientRect();
-    if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
-  }));
-  $('#overview-button').addEventListener('click', () => openDialog('#overview-dialog'));
-  $('#help-button').addEventListener('click', () => openDialog('#help-dialog'));
-  function openNotes() {
-    $('#notes-title').textContent = `${pad(current + 1)} / ${slides[current].dataset.label}`;
-    $('#notes-content').textContent = notes[current];
-    openDialog('#notes-dialog');
-  }
-  $('#notes-button').addEventListener('click', openNotes);
-  $('#join-button').addEventListener('click', () => {
-    $('#conversation-text').textContent = selectedRole
-      ? `Привіт! Мене зацікавила ваша команда. Мені близький напрям «${roles[selectedRole].interest}». Як я можу долучитися?`
-      : 'Привіт! Мене зацікавила ваша команда. Хочу дізнатися більше про волонтерство й можливі ролі. З чого почати?';
-    $('#copy-status').textContent = '';
-    openDialog('#join-dialog');
-  });
-  $('#copy-button').addEventListener('click', async () => {
-    const text = $('#conversation-text').textContent;
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(text);
-      $('#copy-status').textContent = 'Скопійовано. Текст можна зберегти у власних нотатках.';
-    } catch {
-      const range = document.createRange(); range.selectNodeContents($('#conversation-text'));
-      const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-      $('#copy-status').textContent = 'Текст виділено. Скопіюй його вручну або почни розмову своїми словами.';
-    }
-  });
-
-  const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
-  function applyMotion(reduced) {
-    document.body.classList.toggle('reduce-motion', reduced);
-    $('#motion-button').setAttribute('aria-pressed', String(reduced));
-    $('#motion-button').title = reduced ? 'Зменшення руху ввімкнено' : 'Зменшити анімацію';
-  }
-  applyMotion(motionQuery.matches);
-  motionQuery.addEventListener('change', (event) => applyMotion(event.matches));
-  $('#motion-button').addEventListener('click', () => applyMotion(!document.body.classList.contains('reduce-motion')));
-
-  async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-    } catch {
-      $('#slide-announcement').textContent = 'Браузер не дозволив повний екран. Скористайся його меню.';
-    }
-  }
-  if (!document.fullscreenEnabled) $('#fullscreen-button').hidden = true;
-  $('#fullscreen-button').addEventListener('click', toggleFullscreen);
-  document.addEventListener('fullscreenchange', () => {
-    const label = document.fullscreenElement ? 'Вийти з повного екрана' : 'На весь екран';
-    $('#fullscreen-button').setAttribute('aria-label', label);
-    $('#fullscreen-button').title = `${label} (F)`;
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || dialogOpen()) return;
-    if (event.target.closest('input,textarea,select,[contenteditable=true]')) return;
-    const key = event.key;
-    if ((key === ' ' || key === 'Enter') && event.target.closest('button,a')) return;
-    const keys = { ArrowRight: () => showSlide(current + 1), PageDown: () => showSlide(current + 1), ' ': () => showSlide(current + 1), ArrowLeft: () => showSlide(current - 1), PageUp: () => showSlide(current - 1), Home: () => showSlide(0), End: () => showSlide(slides.length - 1), f: toggleFullscreen, F: toggleFullscreen, o: () => openDialog('#overview-dialog'), O: () => openDialog('#overview-dialog'), n: openNotes, N: openNotes, '?': () => openDialog('#help-dialog') };
-    if (keys[key]) { event.preventDefault(); keys[key](); }
-  });
-
-  let touchStart = null;
-  $('main').addEventListener('touchstart', (event) => {
-    if (event.touches.length !== 1 || event.target.closest('button,a,[role=tablist]') || dialogOpen()) { touchStart = null; return; }
-    touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-  }, { passive: true });
-  $('main').addEventListener('touchend', (event) => {
-    if (!touchStart || !event.changedTouches.length) return;
-    const dx = event.changedTouches[0].clientX - touchStart.x;
-    const dy = event.changedTouches[0].clientY - touchStart.y;
-    touchStart = null;
-    if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.8) showSlide(current + (dx < 0 ? 1 : -1));
-  }, { passive: true });
-  $('main').addEventListener('touchcancel', () => { touchStart = null; });
-
-  const config = window.EORE_CONFIG || {};
-  try {
-    if (config.contactUrl) {
-      const url = new URL(config.contactUrl);
-      if (url.protocol === 'https:') {
-        $('#contact-link').href = url.href;
-        $('#contact-link').textContent = String(config.contactLabel || 'Зв’язатися з командою');
-        $('#contact-link').hidden = false;
-      }
-    }
-  } catch { /* An invalid optional contact must not prevent the presentation. */ }
-  showSlide(readHash(), { history: 'replace', focus: false });
-})();
+  $('open-section').hidden = index === 0;
+  $('open-label').textContent = index === FINAL_INDEX ? 'Обрати свій інтерес' : chapter.action;
+  $('next-label').textContent = index === 0 ? 'Відкрити нашу роботу' : index === FINAL_INDEX ? 'Почати розмову' : chapter.next;
+  $('next').lastElementChild.textContent = index === FINAL_INDEX ? '↗' : '+';
+  $('previous').disabled = index === 0; $('overview').disabled = index === 0;
+  $('overview').setAttribute('aria-pressed', 'false');
+  $('scene-caption').textContent = index === 0 ? 'Додавай об’єкти. Натискай, щоб дізнатися більше.' : 'Натисни на об’єкт або його підпис, щоб відкрити історію.';
+  $('cinema-start').hidden = index !== 0 && index !== FINAL_INDEX;
+  $('cinema-start').textContent = index === 0 ? '▷ Коротке знайомство' : '▷ Перший крок до команди';
+  updateInterest();
+  $('announcement').textContent = `Крок ${index + 1} із ${chapters.length}. ${chapter.name}.`;
+  $('narrative').classList.remove('changing'); requestAnimationFrame(() => $('narrative').classList.add('changing'));
+}
+function go(next, { automated = false, instant = false, history = 'push', focus = true } = {}) {
+  if (!Number.isInteger(next) || next < 0 || next > FINAL_INDEX) return;
+  cinema.close(); inspector.close(); $('help-dialog').close();
+  if (!automated) stopAuto();
+  index = next; showingOverview = false;
+  const chapter = chapters[index]; scene?.setChapter(index, chapter.camera, chapter.look, { instant }); update();
+  if (history !== 'none' && location.hash !== `#${chapter.id}`) window.history[history === 'replace' ? 'replaceState' : 'pushState'](null, '', `#${chapter.id}`);
+  document.title = `${chapter.name} · Відділ протимінної діяльності`;
+  if (focus) $('title').focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  if (index === FINAL_INDEX) stopAuto();
+}
+function currentFromHash() { const current = chapters.findIndex(chapter => `#${chapter.id}` === location.hash); return current < 0 ? 0 : current; }
+function openCurrent() { if (index === 0) inspector.catalog(); else if (index === FINAL_INDEX) inspector.join(); else inspector.openElement(chapters[index].id); }
+function launchCinema() {
+  if (!scene) { $('announcement').textContent = '3D недоступне або ще завантажується. Скористайся кнопками історій.'; return; }
+  inspector.close(); $('help-dialog').close(); stopAuto(); cinema.start(index === FINAL_INDEX ? 'finale' : 'intro');
+}
+chapters.forEach((chapter, i) => {
+  const button = document.createElement('button'); button.className = 'chapter'; button.dataset.go = String(i); button.setAttribute('aria-label', `${i + 1}. ${chapter.name}`);
+  const number = document.createElement('span'); number.textContent = pad(i + 1); button.append(number, document.createTextNode(chapter.short)); button.addEventListener('click', () => go(i)); $('chapters').append(button);
+});
+elements.forEach(() => $('layer-indicator').append(document.createElement('i')));
+$('next').addEventListener('click', () => index === FINAL_INDEX ? inspector.join() : go(index + 1));
+$('previous').addEventListener('click', () => go(index - 1)); $('restart').addEventListener('click', () => go(0));
+$('home').addEventListener('click', event => { event.preventDefault(); go(0); });
+document.querySelector('.skip-link').addEventListener('click', event => { event.preventDefault(); $('title').focus({ preventScroll: true }); });
+$('open-section').addEventListener('click', () => index === FINAL_INDEX ? inspector.openElement('roles') : openCurrent());
+$('catalog').addEventListener('click', () => inspector.catalog()); $('cinema-start').addEventListener('click', launchCinema);
+$('overview').addEventListener('click', () => {
+  stopAuto(); showingOverview = !showingOverview;
+  const chapter = showingOverview ? chapters[FINAL_INDEX] : chapters[index]; scene?.overview(chapter.camera, chapter.look);
+  $('overview').setAttribute('aria-pressed', String(showingOverview));
+  $('scene-caption').textContent = showingOverview ? 'Усі вже додані об’єкти залишаються інтерактивними.' : 'Натисни на об’єкт, щоб відкрити історію.';
+});
+$('autoplay').addEventListener('click', () => {
+  if (autoTimer) { stopAuto(); return; } if (reduced) return;
+  if (index === FINAL_INDEX) go(0);
+  $('autoplay').setAttribute('aria-pressed', 'true'); $('play-icon').textContent = 'Ⅱ'; $('play-label').textContent = 'Зупинити показ';
+  go(index + 1, { automated: true });
+  if (index < FINAL_INDEX) autoTimer = setInterval(() => go(index + 1, { automated: true }), 9000);
+});
+function applyMotion() {
+  document.body.classList.toggle('no-motion', reduced); $('motion').setAttribute('aria-pressed', String(reduced));
+  const label = reduced ? 'Увімкнути анімацію' : 'Зменшити анімацію'; $('motion').setAttribute('aria-label', label); $('motion').title = label;
+  $('autoplay').disabled = reduced; $('autoplay').title = reduced ? 'Автопоказ вимкнено в режимі зменшення руху' : 'Автоматично перемикати кроки';
+  stopAuto(); scene?.setReduced(reduced); cinema.motionChanged();
+}
+$('motion').addEventListener('click', () => { reduced = !reduced; applyMotion(); });
+motionQuery.addEventListener('change', event => { reduced = event.matches; applyMotion(); });
+function togglePresenter() {
+  const active = !document.body.classList.contains('presenter-mode'); document.body.classList.toggle('presenter-mode', active); $('presenter').setAttribute('aria-pressed', String(active)); $('presenter-hint').hidden = !active; scene?.resize();
+}
+$('presenter').addEventListener('click', togglePresenter);
+async function fullscreen() {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }
+  catch { $('announcement').textContent = 'Браузер не дозволив повний екран. Скористайся його меню.'; }
+}
+if (!document.fullscreenEnabled) $('fullscreen').hidden = true;
+$('fullscreen').addEventListener('click', fullscreen);
+document.addEventListener('fullscreenchange', () => { const label = document.fullscreenElement ? 'Вийти з повного екрана' : 'На весь екран'; $('fullscreen').setAttribute('aria-label', label); $('fullscreen').title = `${label} · F`; });
+function showHelp() { stopAuto(); inspector.close(); $('help-dialog').showModal(); }
+$('help').addEventListener('click', showHelp); $('show-notes').addEventListener('click', () => inspector.openNotes(index));
+$('help-dialog').querySelector('[data-close]').addEventListener('click', () => $('help-dialog').close());
+document.addEventListener('keydown', event => {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || inspector.isOpen || cinema.active || $('help-dialog').open || event.target.closest('input,textarea,select,[contenteditable=true]')) return;
+  if (event.key === 'Enter' && !event.target.closest('button,a')) { event.preventDefault(); openCurrent(); return; }
+  const handlers = { ArrowRight: () => go(index + 1), PageDown: () => go(index + 1), ArrowLeft: () => go(index - 1), PageUp: () => go(index - 1), Home: () => go(0), End: () => go(FINAL_INDEX), p: togglePresenter, P: togglePresenter, f: fullscreen, F: fullscreen, o: () => inspector.catalog(), O: () => inspector.catalog(), n: () => inspector.openNotes(index), N: () => inspector.openNotes(index), '?': showHelp, Escape: () => { if (document.body.classList.contains('presenter-mode')) togglePresenter(); } };
+  if (handlers[event.key]) { event.preventDefault(); handlers[event.key](); }
+});
+function readNavigation() { const current = currentFromHash(); if (index !== current) go(current, { history: 'none' }); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' })); }
+window.addEventListener('popstate', readNavigation); window.addEventListener('hashchange', readNavigation);
+window.addEventListener('load', () => window.scrollTo({ top: 0, behavior: 'instant' }));
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopAuto(); });
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer); resizeTimer = setTimeout(() => {
+    scene?.resize(); if (cinema.active) cinema.resize(); else { const chapter = showingOverview ? chapters[FINAL_INDEX] : chapters[index]; scene?.overview(chapter.camera, chapter.look); }
+  }, 120);
+});
+let touch = null;
+$('viewport').addEventListener('touchstart', event => { if (event.touches.length !== 1 || event.target.closest('button') || inspector.isOpen || cinema.active) { touch = null; return; } touch = [event.touches[0].clientX, event.touches[0].clientY]; }, { passive: true });
+$('viewport').addEventListener('touchend', event => {
+  if (!touch || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - touch[0], dy = event.changedTouches[0].clientY - touch[1]; touch = null;
+  if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.8) go(index + (dx < 0 ? 1 : -1));
+}, { passive: true });
+$('viewport').addEventListener('touchcancel', () => { touch = null; });
+function fallback(message) {
+  scene?.dispose(); scene = null; $('loading')?.remove(); $('scene-fallback').hidden = false; $('viewport').dataset.ready = 'fallback'; $('cinema-start').disabled = true; $('announcement').textContent = message;
+}
+$('retry-scene').addEventListener('click', () => location.reload());
+applyMotion(); go(currentFromHash(), { history: 'replace', instant: true, focus: false });
+createPrintDeck(() => selectedRole);
+try {
+  await document.fonts.load('500 24px Rubik').catch(() => {});
+  const { createDepartmentScene } = await import('./scene.js');
+  scene = createDepartmentScene($('viewport'), { reduced, onOpen: data => inspector.openElement(data.element, data.point, data), onReady: () => $('loading')?.remove(), onError: fallback });
+  const chapter = chapters[index]; scene.setChapter(index, chapter.camera, chapter.look, { instant: true });
+} catch (error) { console.warn('3D unavailable:', error.message); fallback('3D недоступне. Усі історії залишаються доступними через кнопки й каталог.'); }
