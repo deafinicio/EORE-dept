@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f3ed">
+  <meta name="description" content="Знайомство з відділом протимінної діяльності Харківської обласної організації Українського Червоного Хреста. Знайди можливу роль у волонтерській команді.">
+  <meta property="og:title" content="Твоя участь має значення">
+  <meta property="og:description" content="Відділ протимінної діяльності. Знайомство з командою та можливостями волонтерства.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://deafinicio.github.io/EORE-dept/assets/team.webp">
+  <title>Твоя участь має значення · Відділ протимінної діяльності</title>
+  <link rel="icon" href="assets/logo.png">
+  <link rel="preload" href="assets/team.webp" as="image">
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">До презентації</a>
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+  <header class="site-header">
+    <a class="brand" href="#intro" aria-label="На початок презентації">
+      <img src="assets/logo.png" width="46" height="46" alt="">
+      <span>Український<br><strong>Червоний Хрест</strong></span>
+    </a>
+    <span class="header-location">Харківська область</span>
+    <div class="tools" aria-label="Керування презентацією">
+      <button class="tool" id="overview-button" aria-haspopup="dialog"><span class="grid-icon" aria-hidden="true">▦</span> <span>Слайди</span></button>
+      <button class="tool" id="motion-button" aria-pressed="false" title="Зменшити анімацію"><span aria-hidden="true">◌</span><span class="tool-label">Менше руху</span></button>
+      <button class="tool" id="fullscreen-button" aria-label="На весь екран" title="На весь екран (F)"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+      <button class="tool help-button" id="help-button" aria-label="Клавіші та нотатки доповідача" title="Клавіші та нотатки (?)">?</button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="slide intro" id="intro" data-label="Знайомство" aria-labelledby="intro-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Відділ протимінної діяльності</p>
+        <h1 id="intro-title" tabindex="-1">Твоя участь<br>має <em>значення.</em></h1>
+        <p class="lead">Допомагаємо людям краще розуміти ризики<br class="desktop-break"> та діяти безпечніше.</p>
+        <button class="button primary" data-go="2">Знайти свою роль <span aria-hidden="true">↗</span></button>
+        <p class="micro intro-caption">Харківська обласна організація<br>Товариства Червоного Хреста України</p>
+      </div>
+      <figure class="hero-visual">
+        <div class="orbit orbit-one" aria-hidden="true"></div><div class="orbit orbit-two" aria-hidden="true"></div>
+        <div class="photo-frame"><img src="assets/team.webp" width="1400" height="949" alt="Учасники й волонтери під час спільної активності на заході в Харкові"></div>
+        <div class="photo-stamp"><span class="stamp-dot"></span> Люди, які поруч</div>
+        <figcaption>Фото: Український Червоний Хрест, 2024</figcaption>
+      </figure>
+      <span class="edge-label" aria-hidden="true">ЗНАЙОМСТВО З КОМАНДОЮ / 01</span>
+    </section>
+
+    <section class="slide purpose" id="purpose" data-label="Що ми робимо" aria-labelledby="purpose-title" hidden>
+      <div class="section-heading"><p class="eyebrow">01 / Що ми робимо</p><h2 id="purpose-title" tabindex="-1">Безпека починається<br>з <em>розуміння.</em></h2></div>
+      <div class="purpose-layout">
+        <div class="purpose-content">
+          <p class="interaction-hint">Обери, щоб дізнатися більше</p>
+          <div class="mission-tabs" role="tablist" aria-label="Наша робота">
+            <button role="tab" id="mission-tab-0" aria-controls="mission-panel" aria-selected="true" data-mission="0"><span>01</span> Пояснюємо</button>
+            <button role="tab" id="mission-tab-1" aria-controls="mission-panel" aria-selected="false" tabindex="-1" data-mission="1"><span>02</span> Обговорюємо</button>
+            <button role="tab" id="mission-tab-2" aria-controls="mission-panel" aria-selected="false" tabindex="-1" data-mission="2"><span>03</span> Підтримуємо</button>
+          </div>
+          <div class="mission-panel" id="mission-panel" role="tabpanel" aria-labelledby="mission-tab-0" tabindex="0"><h3>Правила простими словами</h3><p>Допомагаємо розібратися в ризиках, пов’язаних із мінами та вибухонебезпечними предметами.</p></div>
+          <p class="boundary-note">Наш фокус у цій презентації - інформування населення про ризики та безпечну поведінку.</p>
+        </div>
+        <figure class="session-visual"><img src="assets/session.webp" width="1400" height="949" alt="Інформаційне заняття з мінної безпеки на заході Українського Червоного Хреста" loading="lazy"><figcaption>Фото: Український Червоний Хрест, 2024</figcaption><span class="image-index" aria-hidden="true">EORE<br>ХАРКІВЩИНА</span></figure>
+      </div>
+    </section>
+
+    <section class="slide roles" id="roles" data-label="Твоя роль" aria-labelledby="roles-title" hidden>
+      <div class="section-heading"><p class="eyebrow">02 / Можливості участі</p><h2 id="roles-title" tabindex="-1">Що тобі <em>ближче?</em></h2><p class="section-subtitle">Обери інтерес. Подивимося, як він може стати корисним команді.</p></div>
+      <div class="roles-layout">
+        <div class="role-options" role="group" aria-label="Обери цікавий напрям">
+          <button class="role-option" data-role="communication" aria-pressed="true"><span class="option-number">01</span><span>Спілкування<small>Люблю знаходити спільну мову</small></span><span class="option-arrow" aria-hidden="true">↗</span></button>
+          <button class="role-option" data-role="events" aria-pressed="false"><span class="option-number">02</span><span>Організація<small>Подобається продумувати деталі</small></span><span class="option-arrow" aria-hidden="true">↗</span></button>
+          <button class="role-option" data-role="creative" aria-pressed="false"><span class="option-number">03</span><span>Фото, відео, дизайн<small>Хочу створювати зрозумілий контент</small></span><span class="option-arrow" aria-hidden="true">↗</span></button>
+          <button class="role-option" data-role="education" aria-pressed="false"><span class="option-number">04</span><span>Освітня робота<small>Цікаво пояснювати та навчатися</small></span><span class="option-arrow" aria-hidden="true">↗</span></button>
+        </div>
+        <div class="role-detail" aria-live="polite" aria-atomic="true">
+          <span class="detail-kicker">МОЖЛИВИЙ ВНЕСОК</span><span class="detail-number" id="role-number" aria-hidden="true">01</span>
+          <h3 id="role-title">Спілкування<br>з учасниками</h3><p id="role-description">Допомагати людям почуватися впевненіше на заходах і знаходити потрібну інформацію.</p>
+          <div class="role-example"><span>З чого можна почати</span><p id="role-example">Допомога команді у зустрічі та супроводі учасників заходу.</p></div>
+          <button class="text-button" data-go="4">Як починається участь <span aria-hidden="true">↗</span></button>
+          <p class="role-caveat">Конкретні завдання, підготовку й можливості участі обговорюємо разом.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide experience" id="experience" data-label="Твій досвід" aria-labelledby="experience-title" hidden>
+      <div class="experience-layout">
+        <figure class="experience-visual"><div class="photo-frame"><img src="assets/community.webp" width="1400" height="949" alt="Команда й учасники заходу Українського Червоного Хреста просто неба" loading="lazy"></div><span class="photo-note">Разом у реальних справах</span><figcaption>Фото: Український Червоний Хрест, 2024</figcaption></figure>
+        <div><p class="eyebrow">03 / Твій досвід</p><h2 id="experience-title" tabindex="-1">Вміння ростуть<br>у <em>дії.</em></h2><p class="section-subtitle">Завдання, у яких можна застосувати свої сильні сторони та розвивати нові.</p>
+          <div class="benefits">
+            <button aria-expanded="true" aria-controls="benefit-0" data-benefit="0">Спілкування з людьми <span aria-hidden="true">−</span></button><p id="benefit-0">Практика уважного слухання та зрозумілого пояснення.</p>
+            <button aria-expanded="false" aria-controls="benefit-1" data-benefit="1">Робота в команді <span aria-hidden="true">+</span></button><p id="benefit-1" hidden>Досвід домовлятися, розподіляти завдання та підтримувати одне одного.</p>
+            <button aria-expanded="false" aria-controls="benefit-2" data-benefit="2">Організація та творчість <span aria-hidden="true">+</span></button><p id="benefit-2" hidden>Можливість долучатися до підготовки заходів і створення матеріалів відповідно до погодженої ролі.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide journey" id="journey" data-label="Як долучитися" aria-labelledby="journey-title" hidden>
+      <div class="section-heading"><p class="eyebrow">04 / Перші кроки</p><h2 id="journey-title" tabindex="-1">Усе починається<br>зі <em>знайомства.</em></h2></div>
+      <div class="journey-layout">
+        <div class="journey-steps" role="group" aria-label="Кроки до участі">
+          <button data-step="0" aria-pressed="true"><span>01</span> Знайомство з командою <i aria-hidden="true">↗</i></button>
+          <button data-step="1" aria-pressed="false"><span>02</span> Інтереси й можливості <i aria-hidden="true">↗</i></button>
+          <button data-step="2" aria-pressed="false"><span>03</span> Необхідна підготовка <i aria-hidden="true">↗</i></button>
+          <button data-step="3" aria-pressed="false"><span>04</span> Перше завдання <i aria-hidden="true">↗</i></button>
+        </div>
+        <div class="journey-detail" aria-live="polite" aria-atomic="true"><span id="step-number" class="step-number" aria-hidden="true">01</span><h3 id="step-title">Просто поговорімо</h3><p id="step-description">Підійди до представника відділу після виступу. Розкажи, що тебе зацікавило, і постав свої запитання.</p><div class="journey-bottom"><span class="small-dot"></span> Твій темп і можливості важливі</div></div>
+      </div>
+    </section>
+
+    <section class="slide finale" id="join" data-label="Зустрінемось?" aria-labelledby="join-title" hidden>
+      <div class="finale-ribbon" aria-hidden="true"></div><div class="finale-ring" aria-hidden="true"></div>
+      <div class="finale-copy"><p class="eyebrow">05 / Продовжимо знайомство</p><h2 id="join-title" tabindex="-1">Почнімо<br>з <em>«привіт».</em></h2><p class="lead">Підійди до нас після виступу.<br>Обговоримо твої інтереси та можливі ролі.</p><p class="selected-interest" id="selected-interest" hidden></p><button class="button light" id="join-button">Мій перший крок <span aria-hidden="true">↗</span></button><a class="contact-link" id="contact-link" hidden target="_blank" rel="noopener noreferrer"></a><p class="finale-signature">Відділ протимінної діяльності<br>Харківська обласна організація ТЧХУ</p></div>
+      <div class="finale-side" aria-hidden="true">ТВОЯ<br>УЧАСТЬ<br>ВАЖЛИВА.</div>
+    </section>
+  </main>
+
+  <footer class="navigation">
+    <div class="slide-status"><span id="current-index">01</span><span class="status-divider">/</span><span>06</span><span id="current-label">Знайомство</span></div>
+    <nav class="progress-nav" aria-label="Перейти до слайда"><button data-go="0" aria-label="1. Знайомство" aria-current="step"><span></span></button><button data-go="1" aria-label="2. Що ми робимо"><span></span></button><button data-go="2" aria-label="3. Твоя роль"><span></span></button><button data-go="3" aria-label="4. Твій досвід"><span></span></button><button data-go="4" aria-label="5. Як долучитися"><span></span></button><button data-go="5" aria-label="6. Зустрінемось?"><span></span></button></nav>
+    <div class="navigation-actions"><button id="prev-button" class="arrow-button" aria-label="Попередній слайд" disabled>←</button><button id="next-button" class="arrow-button" aria-label="Наступний слайд">→</button></div>
+  </footer>
+  <div class="sr-only" id="slide-announcement" aria-live="polite" aria-atomic="true"></div>
+
+  <dialog id="overview-dialog" aria-labelledby="overview-title"><div class="dialog-header"><p class="eyebrow">Шість екранів знайомства</p><button class="close-button" data-close aria-label="Закрити">×</button></div><h2 id="overview-title">Куди перейдемо?</h2><div class="overview-grid"><button data-go="0"><span>01</span> Знайомство</button><button data-go="1"><span>02</span> Що ми робимо</button><button data-go="2"><span>03</span> Твоя роль</button><button data-go="3"><span>04</span> Твій досвід</button><button data-go="4"><span>05</span> Як долучитися</button><button data-go="5"><span>06</span> Зустрінемось?</button></div></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><p class="eyebrow">Для комфортного показу</p><button class="close-button" data-close aria-label="Закрити">×</button></div><h2 id="help-title">Керування</h2><dl class="shortcuts"><div><dt>← → / Page Up / Page Down</dt><dd>Перемикання слайдів</dd></div><div><dt>Home / End</dt><dd>Перший / останній слайд</dd></div><div><dt>F</dt><dd>Повний екран</dd></div><div><dt>O</dt><dd>Огляд слайдів</dd></div><div><dt>N</dt><dd>Нотатки до поточного слайда</dd></div><div><dt>Esc</dt><dd>Закрити вікно</dd></div></dl><p class="micro">На телефоні можна гортати горизонтальним свайпом. Обраний інтерес зберігається лише протягом цієї сесії. Дані нікуди не надсилаються.</p><div class="dialog-actions"><button class="button primary" id="notes-button">Нотатки доповідача</button><a class="text-button" href="https://redcross.org.ua/news/2024/08/83851/" target="_blank" rel="noopener noreferrer">Джерело фото ↗</a></div></dialog>
+  <dialog id="notes-dialog" aria-labelledby="notes-title"><div class="dialog-header"><p class="eyebrow">Нотатки доповідача</p><button class="close-button" data-close aria-label="Закрити">×</button></div><h2 id="notes-title"></h2><p id="notes-content" class="notes-content"></p><p class="micro">Під час показу на спільному екрані це вікно також бачить аудиторія.</p></dialog>
+  <dialog id="join-dialog" aria-labelledby="join-dialog-title"><div class="dialog-header"><p class="eyebrow">Без складних формальностей</p><button class="close-button" data-close aria-label="Закрити">×</button></div><h2 id="join-dialog-title">Є з чого почати розмову</h2><p>Підійди до команди після виступу. Можеш почати так:</p><blockquote id="conversation-text"></blockquote><div class="dialog-actions"><button class="button primary" id="copy-button">Скопіювати текст</button><button class="text-button" data-close>Домовились <span aria-hidden="true">↗</span></button></div><p class="copy-status micro" id="copy-status" role="status"></p></dialog>
+  <noscript><div class="noscript-note">Увімкни JavaScript для взаємодії. Нижче доступні всі шість слайдів.</div><style>.slide[hidden]{display:grid!important}body{height:auto;overflow:auto}main{height:auto}.navigation,.tools{display:none}.slide{min-height:85vh}.site-header{position:relative}</style></noscript>
+</body>
+</html>

@@ -1,0 +1,64 @@
+name: Deploy presentation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages-state.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - name: Check Pages configuration
+        id: pages-state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}`, {
+            headers: { authorization: `Bearer ${process.env.GH_TOKEN}` }
+          });
+          if (!response.ok) throw new Error(`Repository metadata: ${response.status}`);
+          const repo = await response.json();
+          appendFileSync(process.env.GITHUB_OUTPUT, `enabled=${Boolean(repo.has_pages)}\n`);
+          if (!repo.has_pages) console.log('Pages is disabled. Enable GitHub Actions in Settings > Pages, then run this workflow again.');
+          JS
+      - name: Prepare static files
+        run: |
+          mkdir _site
+          cp index.html styles.css app.js site.config.js _site/
+          cp -R assets _site/assets
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: check
+    if: needs.check.outputs.pages_enabled == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
