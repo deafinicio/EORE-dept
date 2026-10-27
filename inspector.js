@@ -1,14 +1,15 @@
-import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.1';
-import { createMedia } from './media.js?v=1.4.1';
-import { createLiveMap } from './live-maps.js?v=1.4.1';
+import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.2';
+import { createMedia } from './media.js?v=1.4.2';
+import { createLiveMap } from './live-maps.js?v=1.4.2';
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 export function createInspector({ onOpen, getRole, onRole, onMediaChange = () => {}, onChange = () => {}, onPresenterKey = () => {} }) {
   const dialog = $('inspector'), body = $('inspector-body');
-  let missionIndex = 0, benefitIndex = 0, current = null, walker = null, liveMap = null;
+  let missionIndex = 0, benefitIndex = 0, current = null, walker = null, liveMap = null, activeMedia = null;
   const changed = () => queueMicrotask(onChange);
-  function reset(id) { liveMap?.destroy(); liveMap = null; walker = null; current = id; }
+  function makeMedia(host, options) { activeMedia?.destroy(); activeMedia = createMedia(host, options); return activeMedia; }
+  function reset(id) { activeMedia?.destroy(); activeMedia = null; liveMap?.destroy(); liveMap = null; walker = null; current = id; }
   function mediaWalker(media, getIndex, count, select, names) {
     walker = {
       next() { if (media?.next()) return true; const i = getIndex(); if (i + 1 < count) { select(i + 1); return true; } return false; },
@@ -34,7 +35,7 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
   }
   function renderMission() {
     body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">01 / ЩО МИ РОБИМО</span><h2 id="inspector-title">Безпека починається з розуміння</h2><div class="story-tabs" role="tablist" aria-label="Наша робота">${missions.map((mission, i) => `<button role="tab" id="mission-tab-${i}" aria-selected="${i === 0}" aria-controls="mission-panel" tabindex="${i === 0 ? 0 : -1}" data-mission="${i}">${escape(mission[0])}</button>`).join('')}</div><div id="mission-panel" class="story-panel" role="tabpanel" aria-labelledby="mission-tab-0" tabindex="0"><h3></h3><p></p></div></section><div class="story-media" id="mission-media"></div></div>`;
-    const media = createMedia($('mission-media'), { keys: missions[missionIndex][3], label: missions[missionIndex][0], onSelect: photo => { onMediaChange('purpose', photo, { mission: missionIndex }); changed(); } });
+    const media = makeMedia($('mission-media'), { keys: missions[missionIndex][3], label: missions[missionIndex][0], onSelect: photo => { onMediaChange('purpose', photo, { mission: missionIndex }); changed(); } });
     const buttons = [...body.querySelectorAll('[data-mission]')];
     function select(index, focus = false) {
       missionIndex = index;
@@ -56,7 +57,7 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
   function renderRoles() {
     body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section class="role-content"><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-copy" aria-live="polite" aria-atomic="true"></div></section><section class="role-detail" aria-label="Фото обраного напряму"><div id="role-media"></div></section></div>`;
     const detail = body.querySelector('.role-detail'), copy = body.querySelector('.role-copy'); let roleIndex = 0;
-    const media = createMedia($('role-media'), { keys: roles[0].photos, label: roles[0].name, onSelect: photo => { onMediaChange('roles', photo, { role: roles[roleIndex].id }); changed(); } });
+    const media = makeMedia($('role-media'), { keys: roles[0].photos, label: roles[0].name, onSelect: photo => { onMediaChange('roles', photo, { role: roles[roleIndex].id }); changed(); } });
     function select(id, commit = true) {
       const index = roles.findIndex(role => role.id === id); if (index < 0) return; const role = roles[index]; roleIndex = index;
       if (commit) onRole(id);
@@ -73,7 +74,7 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
   function renderBenefits(selected = benefitIndex) {
     body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">03 / ТВІЙ ДОСВІД</span><h2 id="inspector-title">Вміння ростуть у дії</h2><p>Завдання, у яких можна застосувати свої сильні сторони та розвивати нові.</p><div class="benefits">${benefits.map((benefit, i) => `<button data-benefit="${i}" aria-expanded="${i === 0}" aria-controls="benefit-${i}">${escape(benefit[0])}<span aria-hidden="true">${i === 0 ? '−' : '+'}</span></button><p id="benefit-${i}" ${i ? 'hidden' : ''}>${escape(benefit[1])}</p>`).join('')}</div></section><div class="story-media" id="benefit-media"></div></div>`;
     body.querySelector('.slide-layout').classList.add('experience-story');
-    const media = createMedia($('benefit-media'), { keys: benefits[selected][2], label: benefits[selected][0], onSelect: photo => { onMediaChange('experience', photo, { benefit: benefitIndex }); changed(); } });
+    const media = makeMedia($('benefit-media'), { keys: benefits[selected][2], label: benefits[selected][0], onSelect: photo => { onMediaChange('experience', photo, { benefit: benefitIndex }); changed(); } });
     benefits.forEach((benefit, i) => { if (benefit[3]?.joke) { const button = body.querySelector(`[data-benefit="${i}"]`); button.classList.add('travel-option'); button.insertAdjacentHTML('beforeend', '<small>Трохи нашого гумору ↗</small>'); } });
     function select(index) {
       benefitIndex = index;

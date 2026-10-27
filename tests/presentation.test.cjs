@@ -28,6 +28,13 @@ async function open(options = {}, init) {
 async function go(page, index) { await page.locator(`.chapter[data-go="${index}"]`).click(); await page.waitForTimeout(130); }
 async function active(page, id) { assert.equal(await page.locator('body').getAttribute('data-chapter'), id); }
 
+async function fittedPhoto(image) {
+  await image.evaluate(el => el.decode());
+  await image.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const frame = await image.evaluate(el => { const r = el.getBoundingClientRect(), bounds = el.closest('.media-surface').getBoundingClientRect(); return { fit: getComputedStyle(el).objectFit, ratio: r.width / r.height, natural: el.naturalWidth / el.naturalHeight, inside: r.left >= bounds.left && r.right <= bounds.right && r.top >= bounds.top && r.bottom <= bounds.bottom }; });
+  assert.equal(frame.fit, 'contain'); assert.ok(Math.abs(frame.ratio - frame.natural) < .01, 'Full image preserves its source ratio'); assert.ok(frame.inside, 'All image edges stay inside the display frame');
+}
+
 test('Real WebGL scene, local resources, eight chapters and desktop visual fit', async () => {
   const { context, page } = await open();
   try {
@@ -116,8 +123,9 @@ test('Named photos, support gallery and humorous travel card stay linked to the 
     await go(page, 1); await page.locator('#open-section').click(); await page.locator('#mission-tab-2').click();
     const support = page.locator('#mission-media');
     assert.match(await support.locator('.media-foreground').getAttribute('src'), /support-cooperation/);
-    assert.equal(await support.locator('[data-photo]').count(), 2);
+    assert.equal(await support.locator('[data-photo]').count(), 2); await fittedPhoto(support.locator('.media-foreground'));
     await support.locator('[data-photo-next]').click(); assert.match(await support.locator('.media-foreground').getAttribute('src'), /support-session/);
+    await fittedPhoto(support.locator('.media-foreground'));
     assert.match(await page.locator('#viewport').getAttribute('data-purpose-photo'), /support-session/);
     await page.waitForFunction(() => document.querySelector('#viewport').dataset.purposePhotoLoaded?.includes('support-session'));
     assert.doesNotMatch(await support.locator('.media-credit').textContent(), /2024/);
@@ -125,13 +133,13 @@ test('Named photos, support gallery and humorous travel card stay linked to the 
     await page.keyboard.press('Escape'); await go(page, 3); await page.locator('#open-section').click();
     for (const [index, path] of [[0, 'experience-communication'], [1, 'experience-team'], [2, 'experience-creative']]) {
       await page.locator(`[data-benefit="${index}"]`).click(); assert.match(await page.locator('#benefit-media .media-foreground').getAttribute('src'), new RegExp(path));
-      await page.locator('#benefit-media .media-foreground').evaluate(el => el.decode());
+      await fittedPhoto(page.locator('#benefit-media .media-foreground'));
     }
     await page.locator('[data-benefit="3"]').click();
     assert.match(await page.locator('#benefit-3').textContent(), /власні цілі/);
     assert.doesNotMatch(await page.locator('#benefit-3').textContent(), /мер|нагород/i);
     assert.match(await page.locator('#benefit-media .media-foreground').getAttribute('src'), /experience-growth/);
-    await page.locator('#benefit-media .media-foreground').evaluate(image => image.decode());
+    await fittedPhoto(page.locator('#benefit-media .media-foreground'));
     await page.screenshot({ path: `${root}/test-results/experience-growth.png` });
     await page.locator('.travel-option').click();
     assert.match(await page.locator('#benefit-4').textContent(), /туристичний клуб/);
@@ -142,7 +150,7 @@ test('Named photos, support gallery and humorous travel card stay linked to the 
       assert.match(await gallery.locator('.media-foreground').getAttribute('src'), new RegExp(path));
       assert.match(await page.locator('#viewport').getAttribute('data-experience-photo'), new RegExp(path));
       await page.waitForFunction(expected => document.querySelector('#viewport').dataset.experiencePhotoLoaded?.includes(expected), path);
-      const image = gallery.locator('.media-foreground'); await image.evaluate(el => el.decode());
+      const image = gallery.locator('.media-foreground'); await fittedPhoto(image);
       assert.equal(await image.evaluate(el => getComputedStyle(el).objectFit), 'contain');
     }
     await page.screenshot({ path: `${root}/test-results/travel-gallery.png` });
@@ -250,9 +258,9 @@ test('One button traverses every scene, tab and photo in order, including maps a
     await page.route('https://deafinicio.github.io/*-map/', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Map test transport</title><p>Map application response</p>' }));
     const next = async () => { await page.locator('#guided-next').click(); await page.waitForTimeout(40); };
     await next(); await active(page, 'purpose'); assert.equal(await page.locator('#inspector').isVisible(), false);
-    await next(); assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true');
+    await next(); assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true'); await fittedPhoto(page.locator('#mission-media .media-foreground'));
     await next(); assert.equal(await page.locator('#mission-tab-1').getAttribute('aria-selected'), 'true');
-    assert.match(await page.locator('#mission-media .media-foreground').getAttribute('src'), /mission-discussion/);
+    assert.match(await page.locator('#mission-media .media-foreground').getAttribute('src'), /mission-discussion/); await fittedPhoto(page.locator('#mission-media .media-foreground'));
     await next(); assert.equal(await page.locator('#mission-tab-2').getAttribute('aria-selected'), 'true');
     assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-cooperation/);
     await next(); assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-session/);
@@ -263,11 +271,12 @@ test('One button traverses every scene, tab and photo in order, including maps a
       assert.equal(await page.locator('.role-photo-strip').count(), 0);
       const filename = ['role-communication', 'role-organization', 'role-creative', 'role-education'][i];
       assert.match(await page.locator('#role-media .media-foreground').getAttribute('src'), new RegExp(filename));
-      await page.locator('#role-media .media-foreground').evaluate(image => image.decode());
-      assert.equal(await page.locator('#role-media .media-foreground').evaluate(image => getComputedStyle(image).objectFit), 'cover');
+      await fittedPhoto(page.locator('#role-media .media-foreground'));
+      assert.equal(await page.locator('#role-media .media-foreground').evaluate(image => getComputedStyle(image).objectFit), 'contain');
       assert.equal(await page.locator('.role-detail').evaluate(el => el.getBoundingClientRect().bottom < document.querySelector('.inspector-footer').getBoundingClientRect().top), true, 'Large role photo fits above the presenter control');
       assert.equal(await page.locator('.role-copy').evaluate(el => { const tabs = document.querySelector('.role-options').getBoundingClientRect(), photo = document.querySelector('#role-media').getBoundingClientRect(), text = el.getBoundingClientRect(); return text.top >= tabs.bottom && text.right < photo.left; }), true, 'Role copy stays below the four choices on the left');
       assert.equal(await page.locator('#role-media .media-surface').evaluate(el => el.getBoundingClientRect().width > document.querySelector('.roles-layout').getBoundingClientRect().width * .5), true, 'Photo uses the full right pane');
+      await page.waitForFunction(() => { const image = document.querySelector('#role-media .media-foreground'), frame = image.getBoundingClientRect(); return Math.abs(frame.width / frame.height - image.naturalWidth / image.naturalHeight) < .01; });
       await page.screenshot({ path: `${root}/test-results/role-${role}.png` });
     }
     await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await next(); await active(page, 'experience'); await next();
