@@ -1,6 +1,6 @@
-import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.0';
-import { createMedia } from './media.js?v=1.4.0';
-import { createLiveMap } from './live-maps.js?v=1.4.0';
+import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.1';
+import { createMedia } from './media.js?v=1.4.1';
+import { createLiveMap } from './live-maps.js?v=1.4.1';
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
@@ -54,15 +54,15 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
     mediaWalker(media, () => missionIndex, missions.length, select, missions.map(item => item[0]));
   }
   function renderRoles() {
-    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div></section><section class="role-detail"><div class="role-copy" aria-live="polite" aria-atomic="true"></div><div id="role-media"></div></section></div>`;
+    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section class="role-content"><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-copy" aria-live="polite" aria-atomic="true"></div></section><section class="role-detail" aria-label="Фото обраного напряму"><div id="role-media"></div></section></div>`;
     const detail = body.querySelector('.role-detail'), copy = body.querySelector('.role-copy'); let roleIndex = 0;
     const media = createMedia($('role-media'), { keys: roles[0].photos, label: roles[0].name, onSelect: photo => { onMediaChange('roles', photo, { role: roles[roleIndex].id }); changed(); } });
     function select(id, commit = true) {
       const index = roles.findIndex(role => role.id === id); if (index < 0) return; const role = roles[index]; roleIndex = index;
       if (commit) onRole(id);
       body.querySelectorAll('[data-role]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.role === id)));
-      detail.style.setProperty('--role-color', role.color); detail.style.setProperty('--active', role.color);
-      copy.innerHTML = `<span class="detail-kicker">МОЖЛИВИЙ ВНЕСОК</span><span class="detail-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span><h3 id="role-title">${escape(role.title)}</h3><p>${escape(role.text)}</p><div class="role-example"><span>З чого можна почати</span><p>${escape(role.example)}</p></div><button class="choose-role">${getRole() === id ? 'Цей інтерес обрано ✓' : 'Це мені близько ↗'}</button><p class="role-caveat">Конкретні завдання, підготовку й можливості участі обговорюємо разом.</p>`;
+      detail.style.setProperty('--role-color', role.color); detail.style.setProperty('--active', role.color); copy.style.setProperty('--role-color', role.color);
+      copy.innerHTML = `<h3 id="role-title">${escape(role.title)}</h3><p>${escape(role.text)}</p><div class="role-example"><span>З чого можна почати</span><p>${escape(role.example)}</p></div><div class="role-choice"><button class="choose-role">${getRole() === id ? 'Цей інтерес обрано ✓' : 'Це мені близько ↗'}</button><p class="role-caveat">Конкретні завдання, підготовку й можливості участі обговорюємо разом.</p></div>`;
       media.setGallery(role.photos, { label: role.name }); changed();
       copy.querySelector('.choose-role').addEventListener('click', event => { onRole(id); event.currentTarget.textContent = 'Цей інтерес обрано ✓'; });
     }

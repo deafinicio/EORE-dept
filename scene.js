@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FontLoader } from './vendor/FontLoader.js';
 import { TextGeometry } from './vendor/TextGeometry.js';
-import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.4.0';
+import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.4.1';
 
 // The lighting, podiums and camera movement follow department-year-2026.
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .3, ...extra });

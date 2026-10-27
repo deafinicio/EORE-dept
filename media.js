@@ -1,4 +1,4 @@
-import { photos } from './story.js?v=1.4.0';
+import { photos } from './story.js?v=1.4.1';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // The original photographs stay intact; framing and grading belong to the interface.
@@ -7,7 +7,7 @@ export function createMedia(host, { keys, label = 'Фото команди', onS
   function show(index, focus = false) {
     current = (index + photoKeys.length) % photoKeys.length;
     const key = photoKeys[current], photo = photos[key];
-    const image = host.querySelector('.media-foreground'); image.src = photo.src; image.alt = photo.alt;
+    const image = host.querySelector('.media-foreground'); image.src = photo.src; image.alt = photo.alt; image.style.objectPosition = photo.focus || '50% 50%';
     host.querySelector('.media-ambient').style.backgroundImage = `url("${photo.src}")`;
     host.querySelector('.media-caption').textContent = photo.caption;
     host.querySelector('.media-credit').replaceChildren(document.createTextNode(photo.credit));

@@ -264,8 +264,10 @@ test('One button traverses every scene, tab and photo in order, including maps a
       const filename = ['role-communication', 'role-organization', 'role-creative', 'role-education'][i];
       assert.match(await page.locator('#role-media .media-foreground').getAttribute('src'), new RegExp(filename));
       await page.locator('#role-media .media-foreground').evaluate(image => image.decode());
-      assert.equal(await page.locator('#role-media .media-foreground').evaluate(image => getComputedStyle(image).objectFit), 'contain');
-      assert.equal(await page.locator('.role-detail').evaluate(el => el.getBoundingClientRect().bottom < document.querySelector('.inspector-footer').getBoundingClientRect().top), true, 'Role text and photo fit above the presenter control');
+      assert.equal(await page.locator('#role-media .media-foreground').evaluate(image => getComputedStyle(image).objectFit), 'cover');
+      assert.equal(await page.locator('.role-detail').evaluate(el => el.getBoundingClientRect().bottom < document.querySelector('.inspector-footer').getBoundingClientRect().top), true, 'Large role photo fits above the presenter control');
+      assert.equal(await page.locator('.role-copy').evaluate(el => { const tabs = document.querySelector('.role-options').getBoundingClientRect(), photo = document.querySelector('#role-media').getBoundingClientRect(), text = el.getBoundingClientRect(); return text.top >= tabs.bottom && text.right < photo.left; }), true, 'Role copy stays below the four choices on the left');
+      assert.equal(await page.locator('#role-media .media-surface').evaluate(el => el.getBoundingClientRect().width > document.querySelector('.roles-layout').getBoundingClientRect().width * .5), true, 'Photo uses the full right pane');
       await page.screenshot({ path: `${root}/test-results/role-${role}.png` });
     }
     await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await next(); await active(page, 'experience'); await next();

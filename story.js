@@ -2,10 +2,10 @@
 export const photos = {
   session: { src: 'assets/session.webp', alt: 'Інформаційне заняття з мінної безпеки на заході Українського Червоного Хреста', caption: 'Зрозуміла інформація про ризики', credit: 'Український Червоний Хрест, 2024', source: 'https://redcross.org.ua/news/2024/08/83851/' },
   discussion: { src: 'assets/mission-discussion.webp', alt: 'Учасники спільно записують ідеї на великому аркуші під час групового обговорення', caption: 'Обговорюємо й шукаємо відповіді разом', credit: 'Фото надано відділом' },
-  roleCommunication: { src: 'assets/role-communication.webp', alt: 'Учасники та представники Червоного Хреста спілкуються під час навчального заходу', caption: 'Спілкування', credit: 'Фото надано відділом' },
-  roleOrganization: { src: 'assets/role-organization.webp', alt: 'Троє членів команди у захисному спорядженні складають руками спільний символ', caption: 'Організація', credit: 'Фото надано відділом' },
+  roleCommunication: { src: 'assets/role-communication.webp', focus: '50% 60%', alt: 'Учасники та представники Червоного Хреста спілкуються під час навчального заходу', caption: 'Спілкування', credit: 'Фото надано відділом' },
+  roleOrganization: { src: 'assets/role-organization.webp', focus: '50% 48%', alt: 'Троє членів команди у захисному спорядженні складають руками спільний символ', caption: 'Організація', credit: 'Фото надано відділом' },
   roleCreative: { src: 'assets/role-creative.webp', alt: 'Візуалізація відеостудії з камерами, мікрофонами та студійним світлом', caption: 'Фото й дизайн', credit: 'Візуалізацію надано відділом' },
-  roleEducation: { src: 'assets/role-education.webp', alt: 'Спільне фото представників Червоного Хреста та учасників у формі ДСНС біля пожежного автомобіля', caption: 'Освітня робота', credit: 'Фото надано відділом' },
+  roleEducation: { src: 'assets/role-education.webp', focus: '50% 0%', alt: 'Спільне фото представників Червоного Хреста та учасників у формі ДСНС біля пожежного автомобіля', caption: 'Освітня робота', credit: 'Фото надано відділом' },
   growth: { src: 'assets/experience-growth.webp', alt: 'Представник Червоного Хреста з подякою під час урочистої події', caption: 'Зростаємо разом із командою', credit: 'Фото надано відділом' },
   team: { src: 'assets/team.webp', alt: 'Спільна активність учасників і волонтерів', caption: 'Люди, які поруч', credit: 'Український Червоний Хрест, 2024', source: 'https://redcross.org.ua/news/2024/08/83851/' },
   supportCooperation: { src: 'assets/support-cooperation.webp', alt: 'Представники Червоного Хреста й ДСНС тиснуть руки біля пожежного автомобіля', caption: 'Підтримка через взаємодію', credit: 'Фото надано відділом' },
