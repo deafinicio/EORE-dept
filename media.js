@@ -1,4 +1,4 @@
-import { photos } from './story.js?v=1.2.0';
+import { photos } from './story.js?v=1.3.0';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // The original photographs stay intact; framing and grading belong to the interface.
@@ -27,5 +27,5 @@ export function createMedia(host, { keys, label = 'Фото команди', onS
   }
   host.addEventListener('keydown', event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); event.stopPropagation(); show(current + (event.key === 'ArrowRight' ? 1 : -1), true); } });
   setGallery(keys);
-  return { setGallery };
+  return { setGallery, next() { if (current + 1 >= photoKeys.length) return false; show(current + 1); return true; }, get hasNext() { return current + 1 < photoKeys.length; }, get nextNumber() { return current + 2; }, get count() { return photoKeys.length; } };
 }

@@ -28,18 +28,20 @@ async function open(options = {}, init) {
 async function go(page, index) { await page.locator(`.chapter[data-go="${index}"]`).click(); await page.waitForTimeout(130); }
 async function active(page, id) { assert.equal(await page.locator('body').getAttribute('data-chapter'), id); }
 
-test('Real WebGL scene, local resources, six chapters and desktop visual fit', async () => {
+test('Real WebGL scene, local resources, eight chapters and desktop visual fit', async () => {
   const { context, page } = await open();
   try {
     const errors = [], external = [];
     page.on('pageerror', error => errors.push(error.message)); page.on('request', request => { if (!request.url().startsWith(base)) external.push(request.url()); });
     await page.reload({ waitUntil: 'networkidle' }); await page.waitForFunction(() => document.querySelector('#viewport').dataset.ready === 'true');
     assert.equal(await page.locator('#viewport canvas').count(), 1);
-    assert.equal(await page.locator('.chapter').count(), 6);
+    await page.waitForFunction(() => document.querySelector('#viewport').dataset.eoreLetters === '4');
+    assert.equal((await page.locator('#viewport').getAttribute('data-eore-colors')).split(',').length, 4);
+    assert.equal(await page.locator('.chapter').count(), 8);
     assert.equal(await page.locator('#viewport canvas').evaluate(canvas => !!canvas.getContext('webgl2')), true);
-    for (const [index, id] of ['intro', 'purpose', 'roles', 'experience', 'journey', 'join'].entries()) {
+    for (const [index, id] of ['intro', 'purpose', 'roles', 'experience', 'mine-map', 'air-map', 'journey', 'join'].entries()) {
       await go(page, index); await active(page, id); await page.waitForTimeout(350);
-      assert.equal(await page.locator('#viewport').getAttribute('data-visible-count'), String(Math.min(index, 4)));
+      assert.equal(await page.locator('#viewport').getAttribute('data-visible-count'), String(Math.min(index, 6)));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       const overlap = await page.locator('.narrative').evaluate(el => el.getBoundingClientRect().bottom > document.querySelector('.timeline').getBoundingClientRect().top);
       assert.equal(overlap, false, `${id}: text remains above the timeline`);
@@ -54,9 +56,11 @@ test('Keyboard, boundaries, direct links, browser history and catalog', async ()
   try {
     await page.keyboard.press('ArrowLeft'); await active(page, 'intro');
     await page.keyboard.press('ArrowRight'); await active(page, 'purpose');
+    await page.keyboard.press('PageDown'); assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true');
+    await page.keyboard.press('Escape');
     await page.keyboard.press('PageDown'); await active(page, 'roles');
     await page.goBack(); await active(page, 'purpose'); await page.goForward(); await active(page, 'roles');
-    await page.keyboard.press('End'); await active(page, 'join'); await page.keyboard.press('ArrowRight'); await active(page, 'join');
+    await page.keyboard.press('End'); await active(page, 'join');
     await page.keyboard.press('o'); assert.equal(await page.locator('#inspector').isVisible(), true);
     await page.locator('.catalog-card[data-element="experience"]').click(); assert.match(await page.locator('#inspector-title').textContent(), /Вміння/);
     await page.keyboard.press('Escape'); await page.keyboard.press('Home'); await active(page, 'intro');
@@ -70,7 +74,7 @@ test('3D marker and raycasting both open the actual object story', async () => {
   try {
     await go(page, 1); const marker = page.locator('.scene-marker[data-element="purpose"]'); await marker.waitFor({ state: 'visible' });
     await marker.click(); assert.match(await page.locator('#inspector-title').textContent(), /Безпека/);
-    assert.equal(await page.locator('#mission-tab-2').getAttribute('aria-selected'), 'true'); await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true'); await page.keyboard.press('Escape');
     const bounds = await marker.boundingBox(); let opened = false;
     for (const offset of [55, 85, 110]) {
       await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height + offset);
@@ -86,7 +90,7 @@ test('Interactive mission, role memory, benefits, journey and personalized invit
   try {
     const writes = []; page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()); });
     await go(page, 1); await page.locator('#open-section').click();
-    await page.locator('#mission-tab-0').focus(); await page.keyboard.press('ArrowRight');
+    await page.locator('#mission-tab-1').click();
     assert.equal(await page.locator('#mission-tab-1').getAttribute('aria-selected'), 'true'); await active(page, 'purpose');
     assert.match(await page.locator('#mission-panel h3').textContent(), /Ситуації/); await page.keyboard.press('Escape');
     await go(page, 2); await page.locator('#open-section').click(); await page.locator('[data-role="education"]').click();
@@ -94,10 +98,10 @@ test('Interactive mission, role memory, benefits, journey and personalized invit
     await page.locator('[data-role="creative"]').click(); await page.keyboard.press('Escape');
     await go(page, 3); await page.locator('#open-section').click(); await page.locator('[data-benefit="1"]').click();
     assert.equal(await page.locator('#benefit-1').isVisible(), true); assert.equal(await page.locator('#benefit-0').isVisible(), false); await page.keyboard.press('Escape');
-    await go(page, 4); await page.locator('#open-section').click(); await page.locator('[data-step="3"]').click();
+    await go(page, 6); await page.locator('#open-section').click(); await page.locator('[data-step="3"]').click();
     assert.equal(await page.locator('#step-number').textContent(), '04'); await page.keyboard.press('Escape');
-    await go(page, 5); assert.match(await page.locator('#selected-interest').textContent(), /фото, відео та дизайн/);
-    await page.locator('#next').click(); assert.match(await page.locator('#conversation-text').textContent(), /фото, відео та дизайн/);
+    await go(page, 7); assert.match(await page.locator('#selected-interest').textContent(), /фото, відео та дизайн/);
+    await page.locator('#guided-next').click(); assert.match(await page.locator('#conversation-text').textContent(), /фото, відео та дизайн/);
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true }));
     await page.locator('#copy-button').click(); assert.match(await page.locator('#copy-status').textContent(), /вручну/);
     assert.deepEqual(writes, []);
@@ -146,11 +150,11 @@ test('Cinematic camera sequence, focus isolation, completion and return', async 
   try {
     await page.locator('#cinema-start').click(); assert.equal(await page.locator('#cinema').isVisible(), true);
     assert.equal(await page.locator('main').evaluate(el => el.inert), true);
-    for (const count of ['1', '2', '4']) { await page.keyboard.press('PageDown'); assert.equal(await page.locator('#viewport').getAttribute('data-visible-count'), count); }
+    for (const count of ['1', '2', '6']) { await page.keyboard.press('PageDown'); assert.equal(await page.locator('#viewport').getAttribute('data-visible-count'), count); }
     assert.equal(await page.locator('#cinema-count').textContent(), '04 / 04');
     await page.locator('#cinema-next').click(); await active(page, 'purpose');
     assert.equal(await page.locator('#cinema').isVisible(), false); assert.equal(await page.locator('main').evaluate(el => el.inert), false);
-    await go(page, 5); await page.locator('#cinema-start').click(); await page.keyboard.press('ArrowRight'); await page.locator('#cinema-next').click();
+    await go(page, 7); await page.locator('#cinema-start').click(); await page.keyboard.press('ArrowRight'); await page.locator('#cinema-next').click();
     assert.equal(await page.locator('#inspector').isVisible(), true); assert.match(await page.locator('#inspector-title').textContent(), /розмову/);
   } finally { await context.close(); }
 });
@@ -165,7 +169,7 @@ test('Presenter mode, reduced motion, auto show stops on interaction and at fina
     await page.locator('#autoplay').click(); await active(page, 'purpose');
     assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'true');
     await page.locator('#open-section').click(); assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'false'); await page.keyboard.press('Escape');
-    await go(page, 4); await page.locator('#autoplay').click(); await active(page, 'join'); assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'false');
+    await go(page, 6); await page.locator('#autoplay').click(); await active(page, 'join'); assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'false');
     await page.locator('#motion').click();
     assert.equal(await page.locator('#autoplay').isDisabled(), true);
   } finally { await context.close(); }
@@ -175,7 +179,7 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
   for (const width of [390, 320]) {
     const { context, page } = await open({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true });
     try {
-      for (const [index, id] of ['intro', 'purpose', 'roles', 'experience', 'journey', 'join'].entries()) {
+      for (const [index, id] of ['intro', 'purpose', 'roles', 'experience', 'mine-map', 'air-map', 'journey', 'join'].entries()) {
         await go(page, index); await page.waitForTimeout(250);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${width}: ${id}`);
         const fit = await page.locator('.narrative').evaluate(el => { const r = el.getBoundingClientRect(), footer = document.querySelector('.timeline').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 75 && r.bottom < footer.top; });
@@ -191,6 +195,12 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
       await page.locator('#benefit-media').scrollIntoViewIfNeeded();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: `${root}/test-results/mobile-travel-${width}.png`, fullPage: true });
+      await page.keyboard.press('Escape');
+      await go(page, 4); await page.locator('#open-section').click();
+      assert.equal(await page.locator('#map-about-tab').getAttribute('aria-selected'), 'true');
+      await page.waitForTimeout(80); assert.equal(await page.locator('#inspector-body').evaluate(el => el.scrollTop), 0);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+      await page.screenshot({ path: `${root}/test-results/mobile-map-about-${width}.png`, fullPage: true });
       await page.keyboard.press('Escape');
       await go(page, 0);
       await page.locator('#viewport').evaluate(el => {
@@ -212,16 +222,94 @@ test('WebGL failure retains every story and validates optional contact', async (
     await page.locator('[data-role="events"]').click(); await page.keyboard.press('Escape');
     for (const [contactUrl, visible] of [['https://example.org/contact', true], ['javascript:alert(1)', false]]) {
       await page.evaluate(url => { window.EORE_CONFIG = { contactUrl: url, contactLabel: 'Контакт команди' }; }, contactUrl);
-      await go(page, 5); await page.locator('#next').click(); assert.equal(await page.locator('#contact-link').isVisible(), visible); await page.keyboard.press('Escape');
+      await go(page, 7); await page.locator('#guided-next').click(); assert.equal(await page.locator('#contact-link').isVisible(), visible); await page.keyboard.press('Escape');
     }
   } finally { await context.close(); }
 });
 
-test('Print keeps six pages and the JavaScript-free introduction remains readable', async () => {
+test('Print keeps eight pages and the JavaScript-free introduction remains readable', async () => {
   const { context, page } = await open();
-  try { const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true }); assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 6); }
+  try { const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true }); assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 8); }
   finally { await context.close(); }
   const fallback = await browser.newContext({ javaScriptEnabled: false });
   try { const page = await fallback.newPage(); await page.goto(base); assert.equal(await page.locator('.noscript-note').isVisible(), true); }
   finally { await fallback.close(); }
+});
+
+
+test('One button traverses every scene, tab and photo in order, including maps and invitation', async () => {
+  const { context, page } = await open();
+  try {
+    await page.route('https://deafinicio.github.io/*-map/', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Map test transport</title><p>Map application response</p>' }));
+    const next = async () => { await page.locator('#guided-next').click(); await page.waitForTimeout(40); };
+    await next(); await active(page, 'purpose'); assert.equal(await page.locator('#inspector').isVisible(), false);
+    await next(); assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true');
+    await next(); assert.equal(await page.locator('#mission-tab-1').getAttribute('aria-selected'), 'true');
+    await next(); assert.equal(await page.locator('#mission-tab-2').getAttribute('aria-selected'), 'true');
+    assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-cooperation/);
+    await next(); assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-session/);
+    await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await active(page, 'purpose');
+    await next(); await active(page, 'roles'); await next();
+    for (const [i, role] of ['communication', 'events', 'creative', 'education'].entries()) {
+      if (i) await next(); assert.equal(await page.locator(`[data-role="${role}"]`).getAttribute('aria-pressed'), 'true');
+    }
+    await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await next(); await active(page, 'experience'); await next();
+    for (const [i, photo] of ['experience-communication', 'experience-team', 'experience-creative', 'travel-rubtsi', 'travel-balakliia', 'travel-map'].entries()) {
+      if (i) await next(); assert.match(await page.locator('.media-foreground').getAttribute('src'), new RegExp(photo));
+    }
+    await next(); assert.equal(await page.locator('#inspector').isVisible(), false);
+    for (const id of ['mine-map', 'air-map']) {
+      await next(); await active(page, id); await next();
+      assert.equal(await page.locator('#map-about-tab').getAttribute('aria-selected'), 'true');
+      assert.equal(await page.locator('iframe').count(), 0, 'No map runs before its live demonstration');
+      await page.screenshot({ path: `${root}/test-results/${id}-about.png` });
+      await next(); assert.equal(await page.locator('#map-live-tab').getAttribute('aria-selected'), 'true');
+      assert.equal(await page.locator('.map-frame-shell iframe').getAttribute('src'), `https://deafinicio.github.io/${id === 'mine-map' ? 'mine-risk-map' : 'air-threat-map'}/`);
+      assert.equal(await page.locator('.map-frame-shell').evaluate(el => el.getBoundingClientRect().bottom <= document.querySelector('.inspector-footer').getBoundingClientRect().top), true, 'Full map frame fits above presentation controls');
+      await page.screenshot({ path: `${root}/test-results/${id}-live-layout.png` });
+      await next(); assert.equal(await page.locator('#inspector').isVisible(), false);
+      assert.equal(await page.locator('iframe').count(), 0, 'Closed maps stop network polling by removing the frame');
+    }
+    await next(); await active(page, 'journey'); await next();
+    for (let i = 0; i < 4; i++) { if (i) await next(); assert.equal(await page.locator('#step-number').textContent(), String(i + 1).padStart(2, '0')); }
+    await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await next(); await active(page, 'join');
+    await next(); assert.equal(await page.locator('#conversation-text').isVisible(), true); await next();
+    assert.match(await page.locator('#guided-label').textContent(), /спочатку/); await next(); await active(page, 'intro');
+  } finally { await context.close(); }
+});
+
+test('Every story restarts at its first element and guidance follows manual changes', async () => {
+  const { context, page } = await open();
+  try {
+    for (const [index, selector, first, last] of [[1, '[data-mission]', 'aria-selected', 2], [2, '[data-role]', 'aria-pressed', 3], [3, '[data-benefit]', 'aria-expanded', 3], [6, '[data-step]', 'aria-pressed', 3]]) {
+      await go(page, index); await page.locator('#open-section').click(); await page.locator(selector).nth(last).click();
+      await page.keyboard.press('Escape'); await page.locator('#open-section').click();
+      assert.equal(await page.locator(selector).first().getAttribute(first), 'true');
+      await page.keyboard.press('Escape');
+    }
+    await go(page, 3); await page.locator('#open-section').click(); await page.locator('[data-benefit="3"]').click();
+    await page.locator('[data-photo]').nth(1).click(); assert.match(await page.locator('#guided-label').textContent(), /Фото 3 з 3/);
+    await page.keyboard.press('PageDown'); assert.match(await page.locator('.media-foreground').getAttribute('src'), /travel-map/);
+    await page.keyboard.press('Space'); assert.equal(await page.locator('#inspector').isVisible(), false);
+    await page.keyboard.press('ArrowRight'); await active(page, 'mine-map');
+  } finally { await context.close(); }
+});
+
+test('Map frame exposes full application controls, forwarding presenter keys on shared origin', async () => {
+  const { context, page } = await open();
+  try {
+    const origin = 'https://deafinicio.github.io';
+    await page.route(`${origin}/EORE-dept/**`, async route => {
+      const url = new URL(route.request().url());
+      const local = base + url.pathname.replace('/EORE-dept', '') + url.search;
+      const response = await page.request.get(local); await route.fulfill({ response });
+    });
+    await page.route(`${origin}/mine-risk-map/`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><button id="filter">Фільтр мапи</button><output></output><script>document.querySelector("button").onclick=()=>document.querySelector("output").textContent="Фільтр змінено"</script>' }));
+    await page.goto(`${origin}/EORE-dept/#mine-map`); await page.locator('#open-section').click();
+    await page.locator('#guided-next').click();
+    const frame = page.frameLocator('.map-frame-shell iframe');
+    await frame.locator('#filter').click(); assert.equal(await frame.locator('output').textContent(), 'Фільтр змінено');
+    await page.keyboard.press('PageDown'); assert.equal(await page.locator('#inspector').isVisible(), false);
+    await page.keyboard.press('PageDown'); await active(page, 'air-map');
+  } finally { await context.close(); }
 });

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FontLoader } from './vendor/FontLoader.js';
 import { TextGeometry } from './vendor/TextGeometry.js';
-import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.2.0';
+import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.3.0';
 
 // The lighting, podiums and camera movement follow department-year-2026.
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .3, ...extra });
@@ -42,7 +42,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.domElement.setAttribute('role', 'img'); renderer.domElement.setAttribute('aria-label', 'Темна неонова платформа з чотирма інтерактивними складовими знайомства');
+  renderer.domElement.setAttribute('role', 'img'); renderer.domElement.setAttribute('aria-label', 'Темна неонова платформа з шістьма інтерактивними складовими знайомства');
   container.prepend(renderer.domElement);
   const scene = new THREE.Scene(); scene.background = new THREE.Color('#060b16'); scene.fog = new THREE.Fog('#060b16', 55, 145);
   const camera = new THREE.PerspectiveCamera(37, 1, .1, 180); camera.position.set(24, 24, 32);
@@ -55,16 +55,34 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
   const spotlight = new THREE.PointLight(0x5be7ff, 25, 16, 2); scene.add(spotlight);
   const floor = mesh(scene, new THREE.PlaneGeometry(220, 220), material(0x060b16, { metalness: .45 }), [0, -.5, 0]); floor.rotation.x = -Math.PI / 2; floor.castShadow = false; floor.userData.decoration = true;
   const world = new THREE.Group(); scene.add(world);
-  box(world, 23, .42, 19, [0, -.25, .5], 0x091322); box(world, 22.8, .09, 18.8, [0, .005, .5], 0x0d182a);
-  outline(world, 23.03, .43, 19.03, [0, -.24, .5], 0x3279ac); outline(world, 22.84, .05, 18.84, [0, .04, .5], 0x56dfff);
-  const grid = new THREE.GridHelper(23, 23, 0x24577d, 0x18314e); grid.position.set(0, .06, .5); grid.scale.z = 19 / 23; grid.material.transparent = true; grid.material.opacity = .38; world.add(grid);
-  const core = new THREE.Group(); world.add(core);
-  const fallback = label(core, 'EORE', [0, .35, .4], 5.4, '#7bdcf6', false);
+  box(world, 23, .42, 29, [0, -.25, 2], 0x091322); box(world, 22.8, .09, 28.8, [0, .005, 2], 0x0d182a);
+  outline(world, 23.03, .43, 29.03, [0, -.24, 2], 0x3279ac); outline(world, 22.84, .05, 28.84, [0, .04, 2], 0x56dfff);
+  const grid = new THREE.GridHelper(23, 23, 0x24577d, 0x18314e); grid.position.set(0, .06, 2); grid.scale.z = 29 / 23; grid.material.transparent = true; grid.material.opacity = .38; world.add(grid);
+  const core = new THREE.Group(); core.rotation.y = .38; world.add(core);
+  const letterColors = ['#5be7ff', '#ff829b', '#b494ff', '#ffd379'];
+  box(core, 7.8, .15, 1.25, [0, .15, -.1], 0x0d182a);
+  const fallback = label(core, 'E  O  R  E', [0, 1.15, .15], 7.4, '#bfefff', false);
   new FontLoader().load('./vendor/helvetiker_regular.typeface.json', font => {
     if (!alive) return;
-    const geometry = new TextGeometry('EORE', { font, size: 1.65, depth: .4, curveSegments: 6, bevelEnabled: true, bevelThickness: .035, bevelSize: .025, bevelSegments: 2 });
-    geometry.computeBoundingBox(); const width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
-    mesh(core, geometry, material(0x183044, { emissive: 0x2589b1, emissiveIntensity: .7, metalness: .5 }), [-width / 2, .09, -.5]);
+    const letters = [...'EORE'].map((letter, i) => {
+      const geometry = new TextGeometry(letter, { font, size: 1.65, depth: .22, curveSegments: 8, bevelEnabled: true, bevelThickness: .025, bevelSize: .018, bevelSegments: 2 });
+      geometry.computeBoundingBox();
+      const width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
+      const tint = new THREE.Color(letterColors[i]);
+      return { geometry, width, tint };
+    });
+    let x = -(letters.reduce((sum, item) => sum + item.width, 0) + .58 * 3) / 2;
+    letters.forEach(({ geometry, width, tint }, i) => {
+      const front = material(tint.clone().lerp(new THREE.Color('#ffffff'), .55), { emissive: tint, emissiveIntensity: .65, metalness: .15, roughness: .3 });
+      const side = material(tint.clone().multiplyScalar(.2), { emissive: tint, emissiveIntensity: .24 });
+      const letter = mesh(core, geometry, [front, side], [x, .27, -.3]);
+      const contour = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: tint, toneMapped: false, transparent: true, opacity: .9 })); letter.add(contour);
+      const glow = mesh(core, new THREE.PlaneGeometry(2.9, 2.9), new THREE.MeshBasicMaterial({ map: glowMap, color: tint, transparent: true, opacity: .42, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [x + width / 2, 1.1, -.34]); glow.castShadow = false; glow.raycast = () => {};
+      mesh(core, new THREE.BoxGeometry(width + .12, .035, .65), neon(tint), [x + width / 2, .24, -.13]);
+      x += width + .58;
+    });
+    container.dataset.eoreLetters = '4';
+    container.dataset.eoreColors = letterColors.join(',');
     core.remove(fallback); fallback.geometry.dispose(); fallback.material.map.dispose(); fallback.material.dispose();
   }, undefined, () => {});
   label(core, 'ТВОЯ УЧАСТЬ МАЄ ЗНАЧЕННЯ', [0, .1, 2.1], 6, '#8acde4');
@@ -123,25 +141,40 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     const halo = mesh(group, new THREE.PlaneGeometry(8, 7), new THREE.MeshBasicMaterial({ map: glowMap, color: element.accent, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [0, .075, 0]);
     halo.rotation.x = -Math.PI / 2; halo.castShadow = false; halo.userData.decoration = true; halo.raycast = () => {}; group.userData.halo = halo;
     if (element.id === 'purpose') {
-      group.userData.mission = 2;
+      group.userData.mission = 0;
       photoScreens.set(element.id, photo(group, photos[element.photo], [0, 2.2, -.95], 4.1, 2.75, element.accent));
       [-1.4, -.45, .55, 1.5].forEach((x, i) => figure(group, x, .9, i % 2 ? 0x2a6380 : 0x773f5a));
       label(group, 'ЗНАННЯ ДЛЯ БЕЗПЕЧНІШОЇ ПОВЕДІНКИ', [0, 3.9, -.95], 3.8, element.accent, false);
     } else if (element.id === 'roles') {
       roles.forEach((role, i) => {
-        const card = new THREE.Group(); const col = i % 2, row = Math.floor(i / 2); card.position.set((col - .5) * 2.25, 1.53 + row * 1.3, row ? -.8 : .25); card.userData.role = role.id; group.add(card);
+        const card = new THREE.Group(); const col = i % 2, row = Math.floor(i / 2); card.position.set((col - .5) * 2.25, 2.83 - row * 1.3, row ? -.8 : .25); card.userData.role = role.id; group.add(card);
         box(card, 2, 1.12, .12, [0, 0, 0], 0x10253a); outline(card, 2.03, 1.15, .14, [0, 0, 0], role.color);
         label(card, role.name.toUpperCase(), [0, -.20, .08], 1.9, role.color, false);
         const symbol = mesh(card, new THREE.TorusGeometry(.20, .025, 8, 24), neon(role.color), [0, .20, .1]); symbol.rotation.z = i * Math.PI / 4;
         if (i === 2) box(card, .3, .18, .13, [0, .20, .15], 0x6e54a2);
       });
     } else if (element.id === 'experience') {
-      group.userData.benefit = 1;
+      group.userData.benefit = 0;
       photoScreens.set(element.id, photo(group, photos[element.photo], [0, 2.2, -.7], 4.1, 2.75, element.accent));
       [-1.35, 0, 1.35].forEach((x, i) => {
         box(group, 1.14, .16, .9, [x, .5, 1.1], 0x273451); outline(group, 1.17, .19, .93, [x, .5, 1.1], element.accent);
         label(group, ['КОМАНДА', 'СПІЛКУВАННЯ', 'ТВОРЧІСТЬ'][i], [x, .6, 1.1], 1.08, element.accent);
       });
+    } else if (element.id === 'mine-map' || element.id === 'air-map') {
+      const color = element.accent, screen = new THREE.Group(); screen.position.set(0, 2.15, -.5); group.add(screen);
+      box(screen, 4.6, 2.9, .24, [0, 0, 0], 0x102238); outline(screen, 4.65, 2.95, .27, [0, 0, 0], color);
+      const artwork = texture((ctx, w, h) => {
+        ctx.fillStyle = '#071522'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#234359'; ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (let y = 0; y < h; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.globalAlpha = .65; ctx.beginPath();
+        [[.15,.7],[.25,.3],[.5,.18],[.73,.34],[.84,.6],[.64,.8],[.35,.7],[.15,.7]].forEach(([x,y],i) => i ? ctx.lineTo(x*w,y*h) : ctx.moveTo(x*w,y*h)); ctx.stroke();
+        [[.28,.5],[.48,.37],[.65,.6]].forEach(([x,y]) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x*w,y*h,8,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x*w,y*h,18,0,Math.PI*2); ctx.stroke(); });
+      }, 512, 320);
+      mesh(screen, new THREE.PlaneGeometry(4.25, 2.58), new THREE.MeshBasicMaterial({ map: artwork, toneMapped: false }), [0, 0, .14]);
+      box(group, .4, 1.2, .35, [0, .85, -.5]); box(group, 2, .12, 1.2, [0, .4, -.5]);
+      label(group, element.name.toUpperCase(), [0, 3.9, -.5], 4.5, color, false);
+      label(group, 'ВІДКРИТИ ЖИВУ МАПУ', [0, .45, 1.15], 4.2, color);
     } else {
       steps.forEach((step, i) => {
         const stone = new THREE.Group(); stone.position.set(-1.65 + i * 1.1, .45 + i * .27, 0); stone.userData.step = i; group.add(stone);

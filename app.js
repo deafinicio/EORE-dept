@@ -1,10 +1,10 @@
-import { chapters, elements, roles, FINAL_INDEX } from './story.js?v=1.2.0';
-import { createInspector } from './inspector.js?v=1.2.0';
-import { createCinema } from './cinema.js?v=1.2.0';
-import { createPrintDeck } from './print.js?v=1.2.0';
+import { chapters, elements, roles, FINAL_INDEX } from './story.js?v=1.3.0';
+import { createInspector } from './inspector.js?v=1.3.0';
+import { createCinema } from './cinema.js?v=1.3.0';
+import { createPrintDeck } from './print.js?v=1.3.0';
 const $ = id => document.getElementById(id);
 const pad = number => String(number).padStart(2, '0');
-let index = 0, scene = null, cinema, autoTimer = null, selectedRole = null, showingOverview = false;
+let index = 0, scene = null, cinema, autoTimer = null, selectedRole = null, showingOverview = false, detailShown = false, finaleShown = false;
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = motionQuery.matches;
 function stopAuto() {
@@ -12,6 +12,8 @@ function stopAuto() {
   $('autoplay').setAttribute('aria-pressed', 'false'); $('play-icon').textContent = '▷'; $('play-label').textContent = 'Автопоказ';
 }
 const inspector = createInspector({
+  onChange: () => { if (inspector.current === chapters[index].id) detailShown = true; if (inspector.current === 'join') finaleShown = true; syncGuide(); },
+  onPresenterKey: presenterKey,
   onOpen: () => { stopAuto(); cinema?.close(); $('help-dialog').close(); },
   getRole: () => selectedRole,
   onRole: id => { selectedRole = id; updateInterest(); },
@@ -36,7 +38,7 @@ function update() {
   $('eyebrow').textContent = `${pad(index + 1)} / ${index ? chapter.name.toUpperCase() : 'ЗНАЙОМСТВО З КОМАНДОЮ'}`;
   const accent = document.createElement('em'); accent.textContent = chapter.title[1]; $('title').replaceChildren(document.createTextNode(chapter.title[0]), document.createElement('br'), accent);
   $('description').textContent = chapter.description;
-  $('layer-count').textContent = pad(count); $('layer-caption').textContent = count === 4 ? 'Усі складові на платформі' : count ? elements[count - 1].name : 'Початок знайомства';
+  $('layer-count').textContent = pad(count); $('layer-caption').textContent = count === elements.length ? 'Усі складові на платформі' : count ? elements[count - 1].name : 'Початок знайомства';
   $('layer-indicator').querySelectorAll('i').forEach((bar, i) => bar.classList.toggle('on', i < count));
   $('step-counter').textContent = `${pad(index + 1)} / ${pad(chapters.length)}`;
   $('chapters').querySelectorAll('button').forEach((button, i) => {
@@ -52,7 +54,7 @@ function update() {
   $('scene-caption').textContent = index === 0 ? 'Додавай об’єкти. Натискай, щоб дізнатися більше.' : 'Натисни на об’єкт або його підпис, щоб відкрити історію.';
   $('cinema-start').hidden = index !== 0 && index !== FINAL_INDEX;
   $('cinema-start').textContent = index === 0 ? '▷ Коротке знайомство' : '▷ Перший крок до команди';
-  updateInterest();
+  updateInterest(); syncGuide();
   $('announcement').textContent = `Крок ${index + 1} із ${chapters.length}. ${chapter.name}.`;
   $('narrative').classList.remove('changing'); requestAnimationFrame(() => $('narrative').classList.add('changing'));
 }
@@ -60,7 +62,7 @@ function go(next, { automated = false, instant = false, history = 'push', focus 
   if (!Number.isInteger(next) || next < 0 || next > FINAL_INDEX) return;
   cinema.close(); inspector.close(); $('help-dialog').close();
   if (!automated) stopAuto();
-  index = next; showingOverview = false;
+  index = next; showingOverview = false; detailShown = false; finaleShown = false;
   const chapter = chapters[index]; scene?.setChapter(index, chapter.camera, chapter.look, { instant }); update();
   if (history !== 'none' && location.hash !== `#${chapter.id}`) window.history[history === 'replace' ? 'replaceState' : 'pushState'](null, '', `#${chapter.id}`);
   document.title = `${chapter.name} · Відділ протимінної діяльності`;
@@ -68,6 +70,34 @@ function go(next, { automated = false, instant = false, history = 'push', focus 
   window.scrollTo({ top: 0, behavior: 'instant' });
   if (index === FINAL_INDEX) stopAuto();
 }
+function syncGuide() {
+  const label = inspector.isOpen ? inspector.nextLabel : index === 0 ? 'Додати першу сцену' : index === FINAL_INDEX ? (finaleShown ? 'Почати спочатку' : 'Почати розмову') : !detailShown ? `Відкрити: ${chapters[index].name}` : index + 1 === FINAL_INDEX ? 'До запрошення в команду' : `Додати: ${chapters[index + 1].name}`;
+  $('guided-label').textContent = label;
+  $('guided-next').setAttribute('aria-label', label);
+  $('guided-step').textContent = inspector.isOpen ? 'ІСТОРІЯ / ДАЛІ' : `СЦЕНА ${pad(index + 1)} / ${pad(chapters.length)}`;
+}
+function guidedNext() {
+  stopAuto();
+  if (cinema.active) { cinema.next(); return; }
+  if ($('help-dialog').open) { $('help-dialog').close(); return; }
+  if (inspector.isOpen) { inspector.advance(); syncGuide(); return; }
+  if (index === 0) go(1);
+  else if (index === FINAL_INDEX) { if (finaleShown) go(0); else { finaleShown = true; inspector.join(); } }
+  else if (!detailShown) { detailShown = true; inspector.openElement(chapters[index].id); }
+  else go(index + 1);
+  syncGuide();
+}
+function presenterKey(event) {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || cinema?.active || $('help-dialog').open) return;
+  if (event.key !== 'PageDown' && event.target?.closest?.('input,textarea,select,[contenteditable=true]')) return;
+  if (event.key === 'PageDown' || event.key === 'ArrowRight' || event.code === 'Space') {
+    event.preventDefault(); event.stopImmediatePropagation(); if (event.repeat) return; guidedNext();
+    // Keep focus in the parent presentation after forwarding a key from a live map.
+    if (event.view && event.view !== window) $('guided-next').focus({ preventScroll: true });
+  }
+}
+window.addEventListener('keydown', presenterKey, true);
+$('guided-next').addEventListener('click', guidedNext);
 function currentFromHash() { const current = chapters.findIndex(chapter => `#${chapter.id}` === location.hash); return current < 0 ? 0 : current; }
 function openCurrent() { if (index === 0) inspector.catalog(); else if (index === FINAL_INDEX) inspector.join(); else inspector.openElement(chapters[index].id); }
 function launchCinema() {
@@ -123,7 +153,7 @@ $('help-dialog').querySelector('[data-close]').addEventListener('click', () => $
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || inspector.isOpen || cinema.active || $('help-dialog').open || event.target.closest('input,textarea,select,[contenteditable=true]')) return;
   if (event.key === 'Enter' && !event.target.closest('button,a')) { event.preventDefault(); openCurrent(); return; }
-  const handlers = { ArrowRight: () => go(index + 1), PageDown: () => go(index + 1), ArrowLeft: () => go(index - 1), PageUp: () => go(index - 1), Home: () => go(0), End: () => go(FINAL_INDEX), p: togglePresenter, P: togglePresenter, f: fullscreen, F: fullscreen, o: () => inspector.catalog(), O: () => inspector.catalog(), n: () => inspector.openNotes(index), N: () => inspector.openNotes(index), '?': showHelp, Escape: () => { if (document.body.classList.contains('presenter-mode')) togglePresenter(); } };
+  const handlers = { ArrowLeft: () => go(index - 1), PageUp: () => go(index - 1), Home: () => go(0), End: () => go(FINAL_INDEX), p: togglePresenter, P: togglePresenter, f: fullscreen, F: fullscreen, o: () => inspector.catalog(), O: () => inspector.catalog(), n: () => inspector.openNotes(index), N: () => inspector.openNotes(index), '?': showHelp, Escape: () => { if (document.body.classList.contains('presenter-mode')) togglePresenter(); } };
   if (handlers[event.key]) { event.preventDefault(); handlers[event.key](); }
 });
 function readNavigation() { const current = currentFromHash(); if (index !== current) go(current, { history: 'none' }); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' })); }
@@ -151,7 +181,7 @@ applyMotion(); go(currentFromHash(), { history: 'replace', instant: true, focus:
 createPrintDeck(() => selectedRole);
 try {
   await document.fonts.load('500 24px Rubik').catch(() => {});
-  const { createDepartmentScene } = await import('./scene.js?v=1.2.0');
+  const { createDepartmentScene } = await import('./scene.js?v=1.3.0');
   scene = createDepartmentScene($('viewport'), { reduced, onOpen: data => inspector.openElement(data.element, data.point, data), onReady: () => $('loading')?.remove(), onError: fallback });
   const chapter = chapters[index]; scene.setChapter(index, chapter.camera, chapter.look, { instant: true });
 } catch (error) { console.warn('3D unavailable:', error.message); fallback('3D недоступне. Усі історії залишаються доступними через кнопки й каталог.'); }
