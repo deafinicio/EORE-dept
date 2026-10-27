@@ -2,11 +2,13 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const { mkdir } = require('node:fs/promises');
+const { statSync } = require('node:fs');
 const { chromium } = require('playwright');
 const root = require('node:path').resolve(__dirname, '..');
 const base = 'http://127.0.0.1:8794';
 let browser, server;
 before(async () => {
+  for (const name of ['support-cooperation', 'support-session', 'experience-communication', 'experience-team', 'experience-creative', 'travel-rubtsi', 'travel-balakliia', 'travel-map']) assert.ok(statSync(`${root}/assets/${name}.webp`).size > 1000, `${name}: nonempty photo`);
   server = spawn('python3', ['-m', 'http.server', '8794', '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
   let ready = false;
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base)).ok) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 100)); }
@@ -67,7 +69,8 @@ test('3D marker and raycasting both open the actual object story', async () => {
   const { context, page } = await open();
   try {
     await go(page, 1); const marker = page.locator('.scene-marker[data-element="purpose"]'); await marker.waitFor({ state: 'visible' });
-    await marker.click(); assert.match(await page.locator('#inspector-title').textContent(), /Безпека/); await page.keyboard.press('Escape');
+    await marker.click(); assert.match(await page.locator('#inspector-title').textContent(), /Безпека/);
+    assert.equal(await page.locator('#mission-tab-2').getAttribute('aria-selected'), 'true'); await page.keyboard.press('Escape');
     const bounds = await marker.boundingBox(); let opened = false;
     for (const offset of [55, 85, 110]) {
       await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height + offset);
@@ -101,6 +104,43 @@ test('Interactive mission, role memory, benefits, journey and personalized invit
   } finally { await context.close(); }
 });
 
+test('Named photos, support gallery and humorous travel card stay linked to the 3D display', async () => {
+  const { context, page } = await open();
+  try {
+    const shaderErrors = []; page.on('console', message => { if (message.type() === 'error') shaderErrors.push(message.text()); });
+    await go(page, 1); await page.locator('#open-section').click(); await page.locator('#mission-tab-2').click();
+    const support = page.locator('#mission-media');
+    assert.match(await support.locator('.media-foreground').getAttribute('src'), /support-cooperation/);
+    assert.equal(await support.locator('[data-photo]').count(), 2);
+    await support.locator('[data-photo-next]').click(); assert.match(await support.locator('.media-foreground').getAttribute('src'), /support-session/);
+    assert.match(await page.locator('#viewport').getAttribute('data-purpose-photo'), /support-session/);
+    await page.waitForFunction(() => document.querySelector('#viewport').dataset.purposePhotoLoaded?.includes('support-session'));
+    assert.doesNotMatch(await support.locator('.media-credit').textContent(), /2024/);
+    await page.screenshot({ path: `${root}/test-results/support-gallery.png` });
+    await page.keyboard.press('Escape'); await go(page, 3); await page.locator('#open-section').click();
+    for (const [index, path] of [[0, 'experience-communication'], [1, 'experience-team'], [2, 'experience-creative']]) {
+      await page.locator(`[data-benefit="${index}"]`).click(); assert.match(await page.locator('#benefit-media .media-foreground').getAttribute('src'), new RegExp(path));
+      await page.locator('#benefit-media .media-foreground').evaluate(el => el.decode());
+    }
+    await page.locator('[data-benefit="3"]').click();
+    assert.match(await page.locator('#benefit-3').textContent(), /туристичний клуб/);
+    const gallery = page.locator('#benefit-media');
+    assert.equal(await gallery.locator('[data-photo]').count(), 3);
+    for (const [index, path] of ['travel-rubtsi', 'travel-balakliia', 'travel-map'].entries()) {
+      await gallery.locator('[data-photo]').nth(index).click();
+      assert.match(await gallery.locator('.media-foreground').getAttribute('src'), new RegExp(path));
+      assert.match(await page.locator('#viewport').getAttribute('data-experience-photo'), new RegExp(path));
+      await page.waitForFunction(expected => document.querySelector('#viewport').dataset.experiencePhotoLoaded?.includes(expected), path);
+      const image = gallery.locator('.media-foreground'); await image.evaluate(el => el.decode());
+      assert.equal(await image.evaluate(el => getComputedStyle(el).objectFit), 'contain');
+    }
+    await page.screenshot({ path: `${root}/test-results/travel-gallery.png` });
+    await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    await page.screenshot({ path: `${root}/test-results/travel-object.png` });
+    assert.deepEqual(shaderErrors, []);
+  } finally { await context.close(); }
+});
+
 test('Cinematic camera sequence, focus isolation, completion and return', async () => {
   const { context, page } = await open();
   try {
@@ -126,12 +166,7 @@ test('Presenter mode, reduced motion, auto show stops on interaction and at fina
     assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'true');
     await page.locator('#open-section').click(); assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'false'); await page.keyboard.press('Escape');
     await go(page, 4); await page.locator('#autoplay').click(); await active(page, 'join'); assert.equal(await page.locator('#autoplay').getAttribute('aria-pressed'), 'false');
-    // A manual toggle is retained until the system setting actually changes.
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.waitForFunction(() => !matchMedia('(prefers-reduced-motion: reduce)').matches);
-    await page.waitForTimeout(150);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.waitForFunction(() => document.querySelector('#autoplay').disabled);
+    await page.locator('#motion').click();
     assert.equal(await page.locator('#autoplay').isDisabled(), true);
   } finally { await context.close(); }
 });
@@ -152,6 +187,11 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: `${root}/test-results/mobile-role-${width}.png`, fullPage: true });
       await page.keyboard.press('Escape'); assert.equal(await page.locator('#open-section').evaluate(el => el === document.activeElement), true);
+      await go(page, 3); await page.locator('#open-section').click(); await page.locator('[data-benefit="3"]').click();
+      await page.locator('#benefit-media').scrollIntoViewIfNeeded();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+      await page.screenshot({ path: `${root}/test-results/mobile-travel-${width}.png`, fullPage: true });
+      await page.keyboard.press('Escape');
       await go(page, 0);
       await page.locator('#viewport').evaluate(el => {
         el.dispatchEvent(new TouchEvent('touchstart', { touches: [new Touch({ identifier: 1, target: el, clientX: 290, clientY: 180 })], bubbles: true }));

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FontLoader } from './vendor/FontLoader.js';
 import { TextGeometry } from './vendor/TextGeometry.js';
-import { elements, roles, steps, FINAL_INDEX } from './story.js';
+import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.2.0';
 
 // The lighting, podiums and camera movement follow department-year-2026.
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .3, ...extra });
@@ -73,11 +73,45 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, '#ffffff66'); gradient.addColorStop(.4, '#ffffff22'); gradient.addColorStop(1, '#ffffff00'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
   }, 256, 256);
   const loader = new THREE.TextureLoader();
-  function photo(parent, path, position, width = 3.9, height = 2.65, accent = '#5be7ff') {
-    box(parent, width + .12, height + .12, .13, [position[0], position[1], position[2] - .09], 0x0b1425);
-    outline(parent, width + .14, height + .14, .15, [position[0], position[1], position[2] - .08], accent);
-    const map = loader.load(path); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-    const plane = mesh(parent, new THREE.PlaneGeometry(width, height), new THREE.MeshBasicMaterial({ map, toneMapped: false }), position); plane.castShadow = false;
+  const photoScreens = new Map();
+  function roundedShape(w, h, r = .12) {
+    const shape = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    shape.moveTo(x + r, y); shape.lineTo(x + w - r, y); shape.quadraticCurveTo(x + w, y, x + w, y + r);
+    shape.lineTo(x + w, y + h - r); shape.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    shape.lineTo(x + r, y + h); shape.quadraticCurveTo(x, y + h, x, y + h - r);
+    shape.lineTo(x, y + r); shape.quadraticCurveTo(x, y, x + r, y); return shape;
+  }
+  const screenMask = texture((ctx, w, h) => { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(1, 1, w - 2, h - 2, 22); ctx.fill(); }, 1024, 768);
+  function photo(parent, initial, position, width = 3.9, height = 2.65, accent = '#5be7ff') {
+    const housing = new THREE.Group(); housing.position.set(...position); parent.add(housing);
+    const bodyGeometry = new THREE.ExtrudeGeometry(roundedShape(width + .18, height + .18), { depth: .18, bevelEnabled: true, bevelSize: .025, bevelThickness: .025, bevelSegments: 2, curveSegments: 6, steps: 1 });
+    mesh(housing, bodyGeometry, material(0x182d42, { metalness: .7, roughness: .3 }), [0, 0, -.22]);
+    const border = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(roundedShape(width + .12, height + .12).getPoints(48).map(p => new THREE.Vector3(p.x, p.y, 0))), new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: .8, toneMapped: false })); housing.add(border);
+    mesh(housing, new THREE.ShapeGeometry(roundedShape(width, height)), material(0x081321, { roughness: .4 }), [0, 0, .005]);
+    const photoMaterial = material(0xffffff, { map: new THREE.Texture(), alphaMap: screenMask, alphaTest: .08, roughness: .5, metalness: .08, emissive: 0xffffff, emissiveIntensity: .22 });
+    photoMaterial.onBeforeCompile = shader => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>\n#ifdef USE_MAP\nvec2 photoEdge = min(vMapUv, 1.0-vMapUv);\nfloat photoVignette = smoothstep(0.0, 0.13, min(photoEdge.x, photoEdge.y));\ndiffuseColor.rgb *= mix(vec3(0.58,0.70,0.82),vec3(1.0),photoVignette);\nfloat photoLuma = dot(diffuseColor.rgb,vec3(0.2126,0.7152,0.0722));\ndiffuseColor.rgb = mix(vec3(photoLuma),diffuseColor.rgb,0.88);\n#endif`);
+    };
+    const plane = mesh(housing, new THREE.PlaneGeometry(1, 1), photoMaterial, [0, .1, .025]); plane.visible = false; plane.castShadow = false;
+    // A metal support and recessed matte make the image part of the object.
+    box(parent, width * .6, .12, .7, [position[0], .48, position[2] - .02], 0x14293c);
+    [-width * .29, width * .29].forEach(x => box(parent, .07, Math.max(.2, position[1] - height / 2 - .48), .09, [position[0] + x, (.48 + position[1] - height / 2) / 2, position[2] - .08], 0x2c465b));
+    let ticket = 0, caption = null;
+    function set(asset) {
+      const request = ++ticket;
+      loader.load(asset.src, map => {
+        if (request !== ticket || !alive) { map.dispose(); return; }
+        map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        const old = photoMaterial.map; photoMaterial.map = map; photoMaterial.emissiveMap = map; photoMaterial.needsUpdate = true; old?.dispose();
+        const ratio = map.image.width / map.image.height, w = width - .28, h = height - .52;
+        plane.scale.set(ratio > w / h ? w : h * ratio, ratio > w / h ? w / ratio : h, 1); plane.visible = true;
+        if (caption) { housing.remove(caption); caption.geometry.dispose(); caption.material.map.dispose(); caption.material.dispose(); }
+        caption = label(housing, asset.caption.toUpperCase(), [0, -height / 2 + .13, .035], width - .22, accent, false);
+        housing.userData.photoSrc = asset.src;
+        container.dataset[parent.userData.element + 'PhotoLoaded'] = asset.src;
+      });
+    }
+    set(initial); return { set };
   }
   const layers = [], routes = [], markers = [];
   elements.forEach((element, index) => {
@@ -89,7 +123,8 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     const halo = mesh(group, new THREE.PlaneGeometry(8, 7), new THREE.MeshBasicMaterial({ map: glowMap, color: element.accent, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [0, .075, 0]);
     halo.rotation.x = -Math.PI / 2; halo.castShadow = false; halo.userData.decoration = true; halo.raycast = () => {}; group.userData.halo = halo;
     if (element.id === 'purpose') {
-      photo(group, element.image, [0, 2.2, -.95], 4.1, 2.75, element.accent);
+      group.userData.mission = 2;
+      photoScreens.set(element.id, photo(group, photos[element.photo], [0, 2.2, -.95], 4.1, 2.75, element.accent));
       [-1.4, -.45, .55, 1.5].forEach((x, i) => figure(group, x, .9, i % 2 ? 0x2a6380 : 0x773f5a));
       label(group, 'ЗНАННЯ ДЛЯ БЕЗПЕЧНІШОЇ ПОВЕДІНКИ', [0, 3.9, -.95], 3.8, element.accent, false);
     } else if (element.id === 'roles') {
@@ -101,7 +136,8 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
         if (i === 2) box(card, .3, .18, .13, [0, .20, .15], 0x6e54a2);
       });
     } else if (element.id === 'experience') {
-      photo(group, element.image, [0, 2.2, -.7], 4.1, 2.75, element.accent);
+      group.userData.benefit = 1;
+      photoScreens.set(element.id, photo(group, photos[element.photo], [0, 2.2, -.7], 4.1, 2.75, element.accent));
       [-1.35, 0, 1.35].forEach((x, i) => {
         box(group, 1.14, .16, .9, [x, .5, 1.1], 0x273451); outline(group, 1.17, .19, .93, [x, .5, 1.1], element.accent);
         label(group, ['КОМАНДА', 'СПІЛКУВАННЯ', 'ТВОРЧІСТЬ'][i], [x, .6, 1.1], 1.08, element.accent);
@@ -119,7 +155,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     const path = new THREE.CatmullRomCurve3([new THREE.Vector3(from[0], .1, from[1]), new THREE.Vector3((from[0] + element.pos[0]) / 2, .13, (from[1] + element.pos[1]) / 2), new THREE.Vector3(...[element.pos[0], .1, element.pos[1]])]);
     const route = mesh(world, new THREE.TubeGeometry(path, 40, .028, 6, false), neon(element.accent)); route.castShadow = false; route.userData.decoration = true; route.raycast = () => {}; routes.push(route);
     const button = document.createElement('button'); button.className = 'scene-marker'; button.dataset.element = element.id; button.style.setProperty('--marker-color', element.accent); button.textContent = `${String(index + 1).padStart(2, '0')} ${element.short} ↗`; button.setAttribute('aria-label', `Відкрити: ${element.name}`); button.hidden = true;
-    button.addEventListener('click', event => onOpen({ element: element.id, point: [event.clientX, event.clientY] })); container.querySelector('#scene-markers').append(button); markers.push(button);
+    button.addEventListener('click', event => onOpen({ element: element.id, mission: group.userData.mission, benefit: group.userData.benefit, point: [event.clientX, event.clientY] })); container.querySelector('#scene-markers').append(button); markers.push(button);
   });
   let alive = true, ready = false, reduced = initiallyReduced, stage = 0, cinematic = false, moving = null, previous = performance.now(), lastRender = 0, hovered = null, mouseX = 0, mouseY = 0, frameId;
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
@@ -155,6 +191,8 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     while (node) {
       if (node.userData.role) data.role = node.userData.role;
       if (node.userData.step !== undefined) data.step = node.userData.step;
+      if (node.userData.mission !== undefined) data.mission = node.userData.mission;
+      if (node.userData.benefit !== undefined) data.benefit = node.userData.benefit;
       if (node.userData.index) {
         if (!node.visible || node.userData.target !== 1 || node.userData.reveal < .88) return null;
         return { ...data, index: node.userData.index, element: node.userData.element };
@@ -214,6 +252,12 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
   resize(); frameId = requestAnimationFrame(animate);
   return {
     setChapter, resize,
+    setStoryPhoto(id, asset, selection = {}) {
+      photoScreens.get(id)?.set(asset);
+      const group = layers.find(layer => layer.userData.element === id);
+      if (group) Object.assign(group.userData, selection);
+      container.dataset[id + 'Photo'] = asset.src;
+    },
     overview(position, target) { move(position, target); },
     setReduced(value) { reduced = value; if (value) { layers.forEach(group => { group.userData.reveal = group.userData.target; group.userData.delay = 0; }); if (moving) moving.duration = 0; } },
     cinematicShot(kind, index, shot) { cinematic = true; resize(); reveal(shot.count, true); move(shot.camera, shot.look, reduced, shot.duration); },

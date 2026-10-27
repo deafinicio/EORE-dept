@@ -48,7 +48,7 @@ jobs:
       - name: Prepare static files
         run: |
           mkdir _site
-          cp index.html styles.css app.js story.js scene.js inspector.js print.js cinema.js cinema-story.js cinema.css site.config.js _site/
+          cp index.html styles.css app.js story.js scene.js inspector.js media.js print.js cinema.js cinema-story.js cinema.css site.config.js _site/
           cp -R assets _site/assets
           cp -R vendor _site/vendor
           touch _site/.nojekyll

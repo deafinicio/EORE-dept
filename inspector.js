@@ -1,10 +1,11 @@
-import { elements, roles, missions, benefits, steps, notes } from './story.js';
+import { elements, roles, missions, benefits, steps, notes } from './story.js?v=1.2.0';
+import { createMedia } from './media.js?v=1.2.0';
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-const figure = (src, alt) => `<figure class="media-main"><img src="${escape(src)}" alt="${escape(alt)}"><figcaption>Фото: Український Червоний Хрест, 2024. <a href="https://redcross.org.ua/news/2024/08/83851/" target="_blank" rel="noopener noreferrer">Джерело ↗</a></figcaption></figure>`;
 
-export function createInspector({ onOpen, getRole, onRole }) {
+export function createInspector({ onOpen, getRole, onRole, onMediaChange = () => {} }) {
   const dialog = $('inspector'), body = $('inspector-body');
+  let missionIndex = 0, benefitIndex = 0;
   function display(label, accent = '#5be7ff', point) {
     onOpen();
     dialog.style.setProperty('--active', accent);
@@ -19,12 +20,15 @@ export function createInspector({ onOpen, getRole, onRole }) {
     return `<header class="section-heading"><h2 id="inspector-title">${escape(title)}</h2>${text ? `<p>${escape(text)}</p>` : ''}</header>`;
   }
   function renderMission() {
-    body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">01 / ЩО МИ РОБИМО</span><h2 id="inspector-title">Безпека починається з розуміння</h2><div class="story-tabs" role="tablist" aria-label="Наша робота">${missions.map((mission, i) => `<button role="tab" id="mission-tab-${i}" aria-selected="${i === 0}" aria-controls="mission-panel" tabindex="${i === 0 ? 0 : -1}" data-mission="${i}">${escape(mission[0])}</button>`).join('')}</div><div id="mission-panel" class="story-panel" role="tabpanel" aria-labelledby="mission-tab-0" tabindex="0"><h3></h3><p></p></div></section>${figure('assets/session.webp', 'Інформаційне заняття з мінної безпеки на заході Українського Червоного Хреста')}</div>`;
+    body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">01 / ЩО МИ РОБИМО</span><h2 id="inspector-title">Безпека починається з розуміння</h2><div class="story-tabs" role="tablist" aria-label="Наша робота">${missions.map((mission, i) => `<button role="tab" id="mission-tab-${i}" aria-selected="${i === 0}" aria-controls="mission-panel" tabindex="${i === 0 ? 0 : -1}" data-mission="${i}">${escape(mission[0])}</button>`).join('')}</div><div id="mission-panel" class="story-panel" role="tabpanel" aria-labelledby="mission-tab-0" tabindex="0"><h3></h3><p></p></div></section><div class="story-media" id="mission-media"></div></div>`;
+    const media = createMedia($('mission-media'), { keys: missions[missionIndex][3], label: missions[missionIndex][0], onSelect: photo => onMediaChange('purpose', photo, { mission: missionIndex }) });
     const buttons = [...body.querySelectorAll('[data-mission]')];
     function select(index, focus = false) {
+      missionIndex = index;
       buttons.forEach((button, i) => { button.setAttribute('aria-selected', String(i === index)); button.tabIndex = i === index ? 0 : -1; });
       $('mission-panel').setAttribute('aria-labelledby', `mission-tab-${index}`);
       $('mission-panel').querySelector('h3').textContent = missions[index][1]; $('mission-panel').querySelector('p').textContent = missions[index][2];
+      media.setGallery(missions[index][3], { label: missions[index][0] });
       if (focus) buttons[index].focus();
     }
     buttons.forEach((button, index) => {
@@ -33,10 +37,10 @@ export function createInspector({ onOpen, getRole, onRole }) {
         const target = { ArrowRight: (index + 1) % 3, ArrowLeft: (index + 2) % 3, Home: 0, End: 2 }[event.key];
         if (target !== undefined) { event.preventDefault(); event.stopPropagation(); select(target, true); }
       });
-    }); select(0);
+    }); select(missionIndex);
   }
   function renderRoles(roleId) {
-    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-photo-strip"><img src="assets/team.webp" alt="Спільна активність учасників і волонтерів"><p>Можливості участі обговорюємо разом.<small>Фото: Український Червоний Хрест, 2024</small></p></div></section><section class="role-detail" aria-live="polite" aria-atomic="true"></section></div>`;
+    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-photo-strip"><img src="assets/experience-team.webp" alt="Члени команди у формі Червоного Хреста"><p>Можливості участі обговорюємо разом.<small>Фото надано відділом</small></p></div></section><section class="role-detail" aria-live="polite" aria-atomic="true"></section></div>`;
     const detail = body.querySelector('.role-detail');
     function select(id, commit = true) {
       const index = roles.findIndex(role => role.id === id); if (index < 0) return; const role = roles[index];
@@ -49,12 +53,22 @@ export function createInspector({ onOpen, getRole, onRole }) {
     body.querySelectorAll('[data-role]').forEach(button => button.addEventListener('click', () => select(button.dataset.role)));
     select(roleId || getRole() || roles[0].id, !!roleId);
   }
-  function renderBenefits() {
-    body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">03 / ТВІЙ ДОСВІД</span><h2 id="inspector-title">Вміння ростуть у дії</h2><p>Завдання, у яких можна застосувати свої сильні сторони та розвивати нові.</p><div class="benefits">${benefits.map((benefit, i) => `<button data-benefit="${i}" aria-expanded="${i === 0}" aria-controls="benefit-${i}">${escape(benefit[0])}<span aria-hidden="true">${i === 0 ? '−' : '+'}</span></button><p id="benefit-${i}" ${i ? 'hidden' : ''}>${escape(benefit[1])}</p>`).join('')}</div></section>${figure('assets/community.webp', 'Команда й учасники заходу Українського Червоного Хреста')}</div>`;
-    body.querySelectorAll('[data-benefit]').forEach(button => button.addEventListener('click', () => {
-      const wasOpen = button.getAttribute('aria-expanded') === 'true';
-      body.querySelectorAll('[data-benefit]').forEach(option => { const open = option === button && !wasOpen; option.setAttribute('aria-expanded', String(open)); option.querySelector('span').textContent = open ? '−' : '+'; $(option.getAttribute('aria-controls')).hidden = !open; });
-    }));
+  function renderBenefits(selected = benefitIndex) {
+    body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">03 / ТВІЙ ДОСВІД</span><h2 id="inspector-title">Вміння ростуть у дії</h2><p>Завдання, у яких можна застосувати свої сильні сторони та розвивати нові.</p><div class="benefits">${benefits.map((benefit, i) => `<button data-benefit="${i}" aria-expanded="${i === 0}" aria-controls="benefit-${i}">${escape(benefit[0])}<span aria-hidden="true">${i === 0 ? '−' : '+'}</span></button><p id="benefit-${i}" ${i ? 'hidden' : ''}>${escape(benefit[1])}</p>`).join('')}</div></section><div class="story-media" id="benefit-media"></div></div>`;
+    body.querySelector('.slide-layout').classList.add('experience-story');
+    const media = createMedia($('benefit-media'), { keys: benefits[selected][2], label: benefits[selected][0], onSelect: photo => onMediaChange('experience', photo, { benefit: benefitIndex }) });
+    const travelButton = body.querySelector('[data-benefit="3"]'); travelButton.classList.add('travel-option');
+    travelButton.insertAdjacentHTML('beforeend', '<small>Трохи нашого гумору ↗</small>');
+    function select(index) {
+      benefitIndex = index;
+      body.querySelectorAll('[data-benefit]').forEach(option => { const open = Number(option.dataset.benefit) === index; option.setAttribute('aria-expanded', String(open)); option.querySelector('span').textContent = open ? '−' : '+'; $(option.getAttribute('aria-controls')).hidden = !open; });
+      const benefit = benefits[index];
+      const copy = $('benefit-' + index);
+      if (benefit[3]?.joke && !copy.querySelector('.travel-tagline')) copy.insertAdjacentHTML('afterbegin', `<strong class="travel-tagline">${escape(benefit[3].tagline)}</strong>`);
+      media.setGallery(benefit[2], { label: benefit[0], joke: !!benefit[3]?.joke });
+    }
+    body.querySelectorAll('[data-benefit]').forEach(button => button.addEventListener('click', () => select(Number(button.dataset.benefit))));
+    select(selected);
   }
   function renderJourney(step = 0) {
     body.innerHTML = `${heading('Усе починається зі знайомства', 'Твій темп і можливості важливі. Підготовка залежить від погодженої ролі.')}<div class="journey-layout"><div class="journey-steps" role="group" aria-label="Кроки до участі">${steps.map((item, i) => `<button data-step="${i}" aria-pressed="false"><span>${String(i + 1).padStart(2, '0')}</span>${escape(item[0])}</button>`).join('')}</div><section class="journey-detail" aria-live="polite" aria-atomic="true"><span class="step-number" id="step-number" aria-hidden="true"></span><h3 id="step-title"></h3><p id="step-description"></p><div class="journey-bottom">Перше завдання та підтримку команди погоджуємо разом.</div></section></div>`;
@@ -65,9 +79,9 @@ export function createInspector({ onOpen, getRole, onRole }) {
     }
     body.querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => select(Number(button.dataset.step)))); select(step);
   }
-  function openElement(id, point, { role, step } = {}) {
+  function openElement(id, point, { role, step, mission, benefit } = {}) {
     const element = elements.find(item => item.id === id); if (!element) return;
-    if (id === 'purpose') renderMission(); else if (id === 'roles') renderRoles(role); else if (id === 'experience') renderBenefits(); else renderJourney(step ?? 0);
+    if (id === 'purpose') { if (mission !== undefined) missionIndex = mission; renderMission(); } else if (id === 'roles') renderRoles(role); else if (id === 'experience') renderBenefits(benefit ?? benefitIndex); else renderJourney(step ?? 0);
     display(element.name, element.accent, point);
   }
   function catalog(point) {

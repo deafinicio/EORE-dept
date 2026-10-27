@@ -1,4 +1,4 @@
-import { chapters, roles, missions, benefits, steps } from './story.js';
+import { chapters, roles, missions, benefits, steps, photos } from './story.js?v=1.2.0';
 
 export function createPrintDeck(getRole) {
   const root = document.createElement('div'); root.id = 'print-deck'; root.setAttribute('aria-hidden', 'true');
@@ -10,8 +10,9 @@ export function createPrintDeck(getRole) {
     section.append(kicker, title, description);
     if ([0, 1, 3].includes(index)) {
       const figure = document.createElement('figure'); const image = document.createElement('img');
-      image.src = index === 0 ? 'assets/team.webp' : chapter.image; image.alt = 'Захід Українського Червоного Хреста у Харкові';
-      const caption = document.createElement('figcaption'); caption.textContent = 'Фото: Український Червоний Хрест, 2024'; figure.append(image, caption); section.append(figure);
+      const photo = index === 0 ? photos.team : photos[chapter.photo];
+      image.src = photo.src; image.alt = photo.alt;
+      const caption = document.createElement('figcaption'); caption.textContent = photo.credit; figure.append(image, caption); section.append(figure);
     }
     const items = index === 1 ? missions.map(item => [item[1], item[2]]) : index === 2 ? roles.map(role => [role.title, role.text]) : index === 3 ? benefits : index === 4 ? steps.map(item => [item[1], item[2]]) : [];
     if (items.length) {

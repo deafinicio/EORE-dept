@@ -1,7 +1,7 @@
-import { chapters, elements, roles, FINAL_INDEX } from './story.js';
-import { createInspector } from './inspector.js';
-import { createCinema } from './cinema.js';
-import { createPrintDeck } from './print.js';
+import { chapters, elements, roles, FINAL_INDEX } from './story.js?v=1.2.0';
+import { createInspector } from './inspector.js?v=1.2.0';
+import { createCinema } from './cinema.js?v=1.2.0';
+import { createPrintDeck } from './print.js?v=1.2.0';
 const $ = id => document.getElementById(id);
 const pad = number => String(number).padStart(2, '0');
 let index = 0, scene = null, cinema, autoTimer = null, selectedRole = null, showingOverview = false;
@@ -15,6 +15,7 @@ const inspector = createInspector({
   onOpen: () => { stopAuto(); cinema?.close(); $('help-dialog').close(); },
   getRole: () => selectedRole,
   onRole: id => { selectedRole = id; updateInterest(); },
+  onMediaChange: (id, photo, selection) => scene?.setStoryPhoto(id, photo, selection),
 });
 cinema = createCinema({
   isReduced: () => reduced,
@@ -150,7 +151,7 @@ applyMotion(); go(currentFromHash(), { history: 'replace', instant: true, focus:
 createPrintDeck(() => selectedRole);
 try {
   await document.fonts.load('500 24px Rubik').catch(() => {});
-  const { createDepartmentScene } = await import('./scene.js');
+  const { createDepartmentScene } = await import('./scene.js?v=1.2.0');
   scene = createDepartmentScene($('viewport'), { reduced, onOpen: data => inspector.openElement(data.element, data.point, data), onReady: () => $('loading')?.remove(), onError: fallback });
   const chapter = chapters[index]; scene.setChapter(index, chapter.camera, chapter.look, { instant: true });
 } catch (error) { console.warn('3D unavailable:', error.message); fallback('3D недоступне. Усі історії залишаються доступними через кнопки й каталог.'); }
