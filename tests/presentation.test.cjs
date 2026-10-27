@@ -11,7 +11,7 @@ before(async () => {
   let ready = false;
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base)).ok) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 100)); }
   assert.ok(ready, 'Local server starts');
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL || undefined, headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   await mkdir(`${root}/test-results`, { recursive: true });
 });
 after(async () => { await browser?.close(); server?.kill(); });
