@@ -1,6 +1,6 @@
-import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.3.0';
-import { createMedia } from './media.js?v=1.3.0';
-import { createLiveMap } from './live-maps.js?v=1.3.0';
+import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.0';
+import { createMedia } from './media.js?v=1.4.0';
+import { createLiveMap } from './live-maps.js?v=1.4.0';
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
@@ -53,27 +53,28 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
     }); select(missionIndex);
     mediaWalker(media, () => missionIndex, missions.length, select, missions.map(item => item[0]));
   }
-  function renderRoles(roleId) {
-    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-photo-strip"><img src="assets/experience-team.webp" alt="Члени команди у формі Червоного Хреста"><p>Можливості участі обговорюємо разом.<small>Фото надано відділом</small></p></div></section><section class="role-detail" aria-live="polite" aria-atomic="true"></section></div>`;
-    const detail = body.querySelector('.role-detail'); let roleIndex = 0;
+  function renderRoles() {
+    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div></section><section class="role-detail"><div class="role-copy" aria-live="polite" aria-atomic="true"></div><div id="role-media"></div></section></div>`;
+    const detail = body.querySelector('.role-detail'), copy = body.querySelector('.role-copy'); let roleIndex = 0;
+    const media = createMedia($('role-media'), { keys: roles[0].photos, label: roles[0].name, onSelect: photo => { onMediaChange('roles', photo, { role: roles[roleIndex].id }); changed(); } });
     function select(id, commit = true) {
-      const index = roles.findIndex(role => role.id === id); if (index < 0) return; const role = roles[index]; roleIndex = index; changed();
+      const index = roles.findIndex(role => role.id === id); if (index < 0) return; const role = roles[index]; roleIndex = index;
       if (commit) onRole(id);
       body.querySelectorAll('[data-role]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.role === id)));
-      detail.style.setProperty('--role-color', role.color);
-      detail.innerHTML = `<span class="detail-kicker">МОЖЛИВИЙ ВНЕСОК</span><span class="detail-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span><h3 id="role-title">${escape(role.title)}</h3><p>${escape(role.text)}</p><div class="role-example"><span>З чого можна почати</span><p>${escape(role.example)}</p></div><button class="choose-role">${getRole() === id ? 'Цей інтерес обрано ✓' : 'Це мені близько ↗'}</button><p class="role-caveat">Конкретні завдання, підготовку й можливості участі обговорюємо разом.</p>`;
-      detail.querySelector('.choose-role').addEventListener('click', event => { onRole(id); event.currentTarget.textContent = 'Цей інтерес обрано ✓'; });
+      detail.style.setProperty('--role-color', role.color); detail.style.setProperty('--active', role.color);
+      copy.innerHTML = `<span class="detail-kicker">МОЖЛИВИЙ ВНЕСОК</span><span class="detail-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span><h3 id="role-title">${escape(role.title)}</h3><p>${escape(role.text)}</p><div class="role-example"><span>З чого можна почати</span><p>${escape(role.example)}</p></div><button class="choose-role">${getRole() === id ? 'Цей інтерес обрано ✓' : 'Це мені близько ↗'}</button><p class="role-caveat">Конкретні завдання, підготовку й можливості участі обговорюємо разом.</p>`;
+      media.setGallery(role.photos, { label: role.name }); changed();
+      copy.querySelector('.choose-role').addEventListener('click', event => { onRole(id); event.currentTarget.textContent = 'Цей інтерес обрано ✓'; });
     }
     body.querySelectorAll('[data-role]').forEach(button => button.addEventListener('click', () => select(button.dataset.role)));
     select(roles[0].id, false);
-    mediaWalker(null, () => roleIndex, roles.length, i => select(roles[i].id, false), roles.map(item => item.name));
+    mediaWalker(media, () => roleIndex, roles.length, i => select(roles[i].id, false), roles.map(item => item.name));
   }
   function renderBenefits(selected = benefitIndex) {
     body.innerHTML = `<div class="slide-layout"><section class="slide-copy"><span class="slide-number">03 / ТВІЙ ДОСВІД</span><h2 id="inspector-title">Вміння ростуть у дії</h2><p>Завдання, у яких можна застосувати свої сильні сторони та розвивати нові.</p><div class="benefits">${benefits.map((benefit, i) => `<button data-benefit="${i}" aria-expanded="${i === 0}" aria-controls="benefit-${i}">${escape(benefit[0])}<span aria-hidden="true">${i === 0 ? '−' : '+'}</span></button><p id="benefit-${i}" ${i ? 'hidden' : ''}>${escape(benefit[1])}</p>`).join('')}</div></section><div class="story-media" id="benefit-media"></div></div>`;
     body.querySelector('.slide-layout').classList.add('experience-story');
     const media = createMedia($('benefit-media'), { keys: benefits[selected][2], label: benefits[selected][0], onSelect: photo => { onMediaChange('experience', photo, { benefit: benefitIndex }); changed(); } });
-    const travelButton = body.querySelector('[data-benefit="3"]'); travelButton.classList.add('travel-option');
-    travelButton.insertAdjacentHTML('beforeend', '<small>Трохи нашого гумору ↗</small>');
+    benefits.forEach((benefit, i) => { if (benefit[3]?.joke) { const button = body.querySelector(`[data-benefit="${i}"]`); button.classList.add('travel-option'); button.insertAdjacentHTML('beforeend', '<small>Трохи нашого гумору ↗</small>'); } });
     function select(index) {
       benefitIndex = index;
       body.querySelectorAll('[data-benefit]').forEach(option => { const open = Number(option.dataset.benefit) === index; option.setAttribute('aria-expanded', String(open)); option.querySelector('span').textContent = open ? '−' : '+'; $(option.getAttribute('aria-controls')).hidden = !open; });

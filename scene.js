@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FontLoader } from './vendor/FontLoader.js';
 import { TextGeometry } from './vendor/TextGeometry.js';
-import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.3.0';
+import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.4.0';
 
 // The lighting, podiums and camera movement follow department-year-2026.
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .3, ...extra });
@@ -37,6 +37,49 @@ function figure(parent, x, z, color, height = 1) {
   mesh(parent, new THREE.SphereGeometry(.17, 16, 12), material(0xb9d6de), [x, 1.22 + height * .15, z]);
 }
 
+function createPerimeterTape(parent) {
+  // Four corner stakes and two side stakes. All six spans form a closed perimeter.
+  const anchors = [[-11.9, -12.9], [11.9, -12.9], [11.9, 2], [11.9, 16.9], [-11.9, 16.9], [-11.9, 2]];
+  const barrier = new THREE.Group(); barrier.name = 'perimeter-tape'; parent.add(barrier);
+  const stripeMap = texture((ctx, w, h) => {
+    ctx.fillStyle = '#fff3f3'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#df274b';
+    for (let x = -w; x < w * 2; x += 128) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 64, 0); ctx.lineTo(x + 192, h); ctx.lineTo(x + 128, h); ctx.closePath(); ctx.fill(); }
+  }, 256, 128);
+  stripeMap.wrapS = THREE.RepeatWrapping; stripeMap.anisotropy = 4;
+  const ribbonMaterial = material(0xffffff, { map: stripeMap, emissiveMap: stripeMap, emissive: 0xffc5cf, emissiveIntensity: .23, roughness: .57, metalness: .02, side: THREE.DoubleSide });
+  const softMap = texture((ctx, w, h) => { const gradient = ctx.createLinearGradient(0, 0, 0, h); gradient.addColorStop(0, '#ffffff00'); gradient.addColorStop(.3, '#ffffff22'); gradient.addColorStop(.5, '#ffffff66'); gradient.addColorStop(.7, '#ffffff22'); gradient.addColorStop(1, '#ffffff00'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h); }, 16, 128);
+  const auraMaterial = new THREE.MeshBasicMaterial({ map: softMap, color: '#ff5f7f', transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
+  const height = 1.18, width = .30;
+  anchors.forEach(([x, z]) => {
+    const stake = new THREE.Group(); stake.position.set(x, .04, z); barrier.add(stake);
+    mesh(stake, new THREE.CylinderGeometry(.09, .12, 1.5, 10), material(0x344454, { metalness: .7, roughness: .35 }), [0, .75, 0]);
+    mesh(stake, new THREE.CylinderGeometry(.3, .34, .10, 16), material(0x152334), [0, .05, 0]);
+    mesh(stake, new THREE.SphereGeometry(.115, 12, 8), material(0x8798a4, { metalness: .8 }), [0, 1.5, 0]);
+    for (const y of [height - width / 2, height + width / 2]) { const tie = mesh(stake, new THREE.TorusGeometry(.105, .018, 6, 12), neon('#ff7d98'), [0, y - .04, 0]); tie.rotation.x = Math.PI / 2; }
+  });
+  function strip(start, end, bandWidth, offset = 0) {
+    const distance = Math.hypot(end[0] - start[0], end[1] - start[1]), nx = -(end[1] - start[1]) / distance, nz = (end[0] - start[0]) / distance;
+    const positions = [], uvs = [], indices = [], segments = 64, sag = Math.min(.30, distance * .017);
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments, y = height - sag * 4 * t * (1 - t), ripple = Math.sin(t * Math.PI * 2) * .015;
+      const x = start[0] + (end[0] - start[0]) * t + nx * (ripple + offset), z = start[1] + (end[1] - start[1]) * t + nz * (ripple + offset);
+      positions.push(x, y - bandWidth / 2, z, x, y + bandWidth / 2, z);
+      // Keep the red/white diagonal at a fixed physical scale on every span.
+      uvs.push(distance * t / .8, 0, distance * t / .8, 1);
+      if (i < segments) { const j = i * 2; indices.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); }
+    }
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geometry.setIndex(indices); geometry.computeVertexNormals(); return geometry;
+  }
+  anchors.forEach((start, i) => {
+    const end = anchors[(i + 1) % anchors.length];
+    mesh(barrier, strip(start, end, width), ribbonMaterial);
+    const aura = mesh(barrier, strip(start, end, width * 2.5, .012), auraMaterial); aura.castShadow = false;
+  });
+  // The perimeter is scenery, so it cannot intercept clicks on a story.
+  barrier.traverse(object => { object.userData.decoration = true; object.raycast = () => {}; });
+  return anchors.length;
+}
+
 export function createDepartmentScene(container, { onOpen, onReady, onError, reduced: initiallyReduced = false }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
@@ -58,9 +101,9 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
   box(world, 23, .42, 29, [0, -.25, 2], 0x091322); box(world, 22.8, .09, 28.8, [0, .005, 2], 0x0d182a);
   outline(world, 23.03, .43, 29.03, [0, -.24, 2], 0x3279ac); outline(world, 22.84, .05, 28.84, [0, .04, 2], 0x56dfff);
   const grid = new THREE.GridHelper(23, 23, 0x24577d, 0x18314e); grid.position.set(0, .06, 2); grid.scale.z = 29 / 23; grid.material.transparent = true; grid.material.opacity = .38; world.add(grid);
+  container.dataset.perimeterStakes = String(createPerimeterTape(world));
   const core = new THREE.Group(); core.rotation.y = .38; world.add(core);
   const letterColors = ['#5be7ff', '#ff829b', '#b494ff', '#ffd379'];
-  box(core, 7.8, .15, 1.25, [0, .15, -.1], 0x0d182a);
   const fallback = label(core, 'E  O  R  E', [0, 1.15, .15], 7.4, '#bfefff', false);
   new FontLoader().load('./vendor/helvetiker_regular.typeface.json', font => {
     if (!alive) return;
@@ -78,7 +121,6 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
       const letter = mesh(core, geometry, [front, side], [x, .27, -.3]);
       const contour = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: tint, toneMapped: false, transparent: true, opacity: .9 })); letter.add(contour);
       const glow = mesh(core, new THREE.PlaneGeometry(2.9, 2.9), new THREE.MeshBasicMaterial({ map: glowMap, color: tint, transparent: true, opacity: .42, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [x + width / 2, 1.1, -.34]); glow.castShadow = false; glow.raycast = () => {};
-      mesh(core, new THREE.BoxGeometry(width + .12, .035, .65), neon(tint), [x + width / 2, .24, -.13]);
       x += width + .58;
     });
     container.dataset.eoreLetters = '4';
@@ -148,7 +190,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     } else if (element.id === 'roles') {
       roles.forEach((role, i) => {
         const card = new THREE.Group(); const col = i % 2, row = Math.floor(i / 2); card.position.set((col - .5) * 2.25, 2.83 - row * 1.3, row ? -.8 : .25); card.userData.role = role.id; group.add(card);
-        box(card, 2, 1.12, .12, [0, 0, 0], 0x10253a); outline(card, 2.03, 1.15, .14, [0, 0, 0], role.color);
+        box(card, 2, 1.12, .12, [0, 0, 0], 0x10253a); card.userData.roleBorder = outline(card, 2.03, 1.15, .14, [0, 0, 0], role.color);
         label(card, role.name.toUpperCase(), [0, -.20, .08], 1.9, role.color, false);
         const symbol = mesh(card, new THREE.TorusGeometry(.20, .025, 8, 24), neon(role.color), [0, .20, .1]); symbol.rotation.z = i * Math.PI / 4;
         if (i === 2) box(card, .3, .18, .13, [0, .20, .15], 0x6e54a2);
@@ -288,7 +330,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     setStoryPhoto(id, asset, selection = {}) {
       photoScreens.get(id)?.set(asset);
       const group = layers.find(layer => layer.userData.element === id);
-      if (group) Object.assign(group.userData, selection);
+      if (group) { Object.assign(group.userData, selection); if (id === 'roles') group.traverse(card => { if (card.userData.roleBorder) card.userData.roleBorder.material.opacity = card.userData.role === selection.role ? 1 : .35; }); }
       container.dataset[id + 'Photo'] = asset.src;
     },
     overview(position, target) { move(position, target); },

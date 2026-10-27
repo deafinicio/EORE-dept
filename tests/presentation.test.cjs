@@ -8,7 +8,7 @@ const root = require('node:path').resolve(__dirname, '..');
 const base = 'http://127.0.0.1:8794';
 let browser, server;
 before(async () => {
-  for (const name of ['support-cooperation', 'support-session', 'experience-communication', 'experience-team', 'experience-creative', 'travel-rubtsi', 'travel-balakliia', 'travel-map']) assert.ok(statSync(`${root}/assets/${name}.webp`).size > 1000, `${name}: nonempty photo`);
+  for (const name of ['support-cooperation', 'support-session', 'experience-communication', 'experience-team', 'experience-creative', 'experience-growth', 'travel-rubtsi', 'travel-balakliia', 'travel-map', 'mission-discussion', 'role-communication', 'role-organization', 'role-creative', 'role-education']) assert.ok(statSync(`${root}/assets/${name}.webp`).size > 1000, `${name}: nonempty photo`);
   server = spawn('python3', ['-m', 'http.server', '8794', '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
   let ready = false;
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base)).ok) { ready = true; break; } } catch {} await new Promise(resolve => setTimeout(resolve, 100)); }
@@ -38,6 +38,7 @@ test('Real WebGL scene, local resources, eight chapters and desktop visual fit',
     await page.waitForFunction(() => document.querySelector('#viewport').dataset.eoreLetters === '4');
     assert.equal((await page.locator('#viewport').getAttribute('data-eore-colors')).split(',').length, 4);
     assert.equal(await page.locator('.chapter').count(), 8);
+    assert.equal(await page.locator('#viewport').getAttribute('data-perimeter-stakes'), '6');
     assert.equal(await page.locator('#viewport canvas').evaluate(canvas => !!canvas.getContext('webgl2')), true);
     for (const [index, id] of ['intro', 'purpose', 'roles', 'experience', 'mine-map', 'air-map', 'journey', 'join'].entries()) {
       await go(page, index); await active(page, id); await page.waitForTimeout(350);
@@ -127,7 +128,13 @@ test('Named photos, support gallery and humorous travel card stay linked to the 
       await page.locator('#benefit-media .media-foreground').evaluate(el => el.decode());
     }
     await page.locator('[data-benefit="3"]').click();
-    assert.match(await page.locator('#benefit-3').textContent(), /туристичний клуб/);
+    assert.match(await page.locator('#benefit-3').textContent(), /власні цілі/);
+    assert.doesNotMatch(await page.locator('#benefit-3').textContent(), /мер|нагород/i);
+    assert.match(await page.locator('#benefit-media .media-foreground').getAttribute('src'), /experience-growth/);
+    await page.locator('#benefit-media .media-foreground').evaluate(image => image.decode());
+    await page.screenshot({ path: `${root}/test-results/experience-growth.png` });
+    await page.locator('.travel-option').click();
+    assert.match(await page.locator('#benefit-4').textContent(), /туристичний клуб/);
     const gallery = page.locator('#benefit-media');
     assert.equal(await gallery.locator('[data-photo]').count(), 3);
     for (const [index, path] of ['travel-rubtsi', 'travel-balakliia', 'travel-map'].entries()) {
@@ -191,7 +198,7 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: `${root}/test-results/mobile-role-${width}.png`, fullPage: true });
       await page.keyboard.press('Escape'); assert.equal(await page.locator('#open-section').evaluate(el => el === document.activeElement), true);
-      await go(page, 3); await page.locator('#open-section').click(); await page.locator('[data-benefit="3"]').click();
+      await go(page, 3); await page.locator('#open-section').click(); await page.locator('.travel-option').click();
       await page.locator('#benefit-media').scrollIntoViewIfNeeded();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: `${root}/test-results/mobile-travel-${width}.png`, fullPage: true });
@@ -245,6 +252,7 @@ test('One button traverses every scene, tab and photo in order, including maps a
     await next(); await active(page, 'purpose'); assert.equal(await page.locator('#inspector').isVisible(), false);
     await next(); assert.equal(await page.locator('#mission-tab-0').getAttribute('aria-selected'), 'true');
     await next(); assert.equal(await page.locator('#mission-tab-1').getAttribute('aria-selected'), 'true');
+    assert.match(await page.locator('#mission-media .media-foreground').getAttribute('src'), /mission-discussion/);
     await next(); assert.equal(await page.locator('#mission-tab-2').getAttribute('aria-selected'), 'true');
     assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-cooperation/);
     await next(); assert.match(await page.locator('.media-foreground').getAttribute('src'), /support-session/);
@@ -252,9 +260,16 @@ test('One button traverses every scene, tab and photo in order, including maps a
     await next(); await active(page, 'roles'); await next();
     for (const [i, role] of ['communication', 'events', 'creative', 'education'].entries()) {
       if (i) await next(); assert.equal(await page.locator(`[data-role="${role}"]`).getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('.role-photo-strip').count(), 0);
+      const filename = ['role-communication', 'role-organization', 'role-creative', 'role-education'][i];
+      assert.match(await page.locator('#role-media .media-foreground').getAttribute('src'), new RegExp(filename));
+      await page.locator('#role-media .media-foreground').evaluate(image => image.decode());
+      assert.equal(await page.locator('#role-media .media-foreground').evaluate(image => getComputedStyle(image).objectFit), 'contain');
+      assert.equal(await page.locator('.role-detail').evaluate(el => el.getBoundingClientRect().bottom < document.querySelector('.inspector-footer').getBoundingClientRect().top), true, 'Role text and photo fit above the presenter control');
+      await page.screenshot({ path: `${root}/test-results/role-${role}.png` });
     }
     await next(); assert.equal(await page.locator('#inspector').isVisible(), false); await next(); await active(page, 'experience'); await next();
-    for (const [i, photo] of ['experience-communication', 'experience-team', 'experience-creative', 'travel-rubtsi', 'travel-balakliia', 'travel-map'].entries()) {
+    for (const [i, photo] of ['experience-communication', 'experience-team', 'experience-creative', 'experience-growth', 'travel-rubtsi', 'travel-balakliia', 'travel-map'].entries()) {
       if (i) await next(); assert.match(await page.locator('.media-foreground').getAttribute('src'), new RegExp(photo));
     }
     await next(); assert.equal(await page.locator('#inspector').isVisible(), false);
@@ -281,13 +296,13 @@ test('One button traverses every scene, tab and photo in order, including maps a
 test('Every story restarts at its first element and guidance follows manual changes', async () => {
   const { context, page } = await open();
   try {
-    for (const [index, selector, first, last] of [[1, '[data-mission]', 'aria-selected', 2], [2, '[data-role]', 'aria-pressed', 3], [3, '[data-benefit]', 'aria-expanded', 3], [6, '[data-step]', 'aria-pressed', 3]]) {
+    for (const [index, selector, first, last] of [[1, '[data-mission]', 'aria-selected', 2], [2, '[data-role]', 'aria-pressed', 3], [3, '[data-benefit]', 'aria-expanded', 4], [6, '[data-step]', 'aria-pressed', 3]]) {
       await go(page, index); await page.locator('#open-section').click(); await page.locator(selector).nth(last).click();
       await page.keyboard.press('Escape'); await page.locator('#open-section').click();
       assert.equal(await page.locator(selector).first().getAttribute(first), 'true');
       await page.keyboard.press('Escape');
     }
-    await go(page, 3); await page.locator('#open-section').click(); await page.locator('[data-benefit="3"]').click();
+    await go(page, 3); await page.locator('#open-section').click(); await page.locator('.travel-option').click();
     await page.locator('[data-photo]').nth(1).click(); assert.match(await page.locator('#guided-label').textContent(), /Фото 3 з 3/);
     await page.keyboard.press('PageDown'); assert.match(await page.locator('.media-foreground').getAttribute('src'), /travel-map/);
     await page.keyboard.press('Space'); assert.equal(await page.locator('#inspector').isVisible(), false);
