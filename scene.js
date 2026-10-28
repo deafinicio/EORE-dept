@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { accentForTheme } from './theme.js?v=1.5.0';
 import { FontLoader } from './vendor/FontLoader.js';
 import { TextGeometry } from './vendor/TextGeometry.js';
-import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.4.2';
+import { elements, roles, steps, photos, FINAL_INDEX } from './story.js?v=1.5.0';
 
 // The lighting, podiums and camera movement follow department-year-2026.
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .3, ...extra });
@@ -27,6 +28,7 @@ function label(parent, value, position, width = 4, color = '#8ed3e7', flat = tru
   const map = texture((ctx, w, h) => {
     ctx.fillStyle = color; ctx.font = `500 ${Math.min(66, 1700 / value.length)}px Rubik`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(value, w / 2, h / 2);
   });
+  map.userData.label = { value, color }; map.userData.paletteTheme = 'dark';
   const plane = mesh(parent, new THREE.PlaneGeometry(width, width / 4), new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }), position);
   if (flat) plane.rotation.x = -Math.PI / 2;
   plane.castShadow = false; plane.userData.decoration = true; plane.raycast = () => {};
@@ -80,7 +82,9 @@ function createPerimeterTape(parent) {
   return anchors.length;
 }
 
-export function createDepartmentScene(container, { onOpen, onReady, onError, reduced: initiallyReduced = false }) {
+export function createDepartmentScene(container, { onOpen, onReady, onError, reduced: initiallyReduced = false, theme: initialTheme = 'dark' }) {
+  let currentTheme = initialTheme;
+  const materialPalette = new Map();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
@@ -118,6 +122,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     letters.forEach(({ geometry, width, tint }, i) => {
       const front = material(tint.clone().lerp(new THREE.Color('#ffffff'), .55), { emissive: tint, emissiveIntensity: .65, metalness: .15, roughness: .3 });
       const side = material(tint.clone().multiplyScalar(.2), { emissive: tint, emissiveIntensity: .24 });
+      front.userData.ink = letterColors[i]; side.userData.ink = letterColors[i];
       const letter = mesh(core, geometry, [front, side], [x, .27, -.3]);
       const contour = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), new THREE.LineBasicMaterial({ color: tint, toneMapped: false, transparent: true, opacity: .9 })); letter.add(contour);
       const glow = mesh(core, new THREE.PlaneGeometry(2.9, 2.9), new THREE.MeshBasicMaterial({ map: glowMap, color: tint, transparent: true, opacity: .42, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), [x + width / 2, 1.1, -.34]); glow.castShadow = false; glow.raycast = () => {};
@@ -125,7 +130,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     });
     container.dataset.eoreLetters = '4';
     container.dataset.eoreColors = letterColors.join(',');
-    core.remove(fallback); fallback.geometry.dispose(); fallback.material.map.dispose(); fallback.material.dispose();
+    core.remove(fallback); fallback.geometry.dispose(); fallback.material.map.dispose(); fallback.material.dispose(); setTheme(currentTheme);
   }, undefined, () => {});
   label(core, 'ТВОЯ УЧАСТЬ МАЄ ЗНАЧЕННЯ', [0, .1, 2.1], 6, '#8acde4');
   label(core, 'ВІДДІЛ ПРОТИМІННОЇ ДІЯЛЬНОСТІ', [0, .1, 2.8], 5.4, '#426e8e');
@@ -168,7 +173,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
         if (caption) { housing.remove(caption); caption.geometry.dispose(); caption.material.map.dispose(); caption.material.dispose(); }
         caption = label(housing, asset.caption.toUpperCase(), [0, -height / 2 + .13, .035], width - .22, accent, false);
         housing.userData.photoSrc = asset.src;
-        container.dataset[parent.userData.element + 'PhotoLoaded'] = asset.src;
+        container.dataset[parent.userData.element + 'PhotoLoaded'] = asset.src; setTheme(currentTheme);
       });
     }
     set(initial); return { set };
@@ -257,8 +262,8 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
   function setChapter(index, position, target, { instant = false } = {}) {
     stage = index; cinematic = false; resize(); reveal(Math.min(elements.length, index), instant);
     const element = elements[Math.min(elements.length, index) - 1];
-    spotlight.intensity = element && index !== FINAL_INDEX ? 28 : 9;
-    if (element) { spotlight.color.set(element.accent); spotlight.position.set(element.pos[0], 4, element.pos[1] + 1); }
+    spotlight.intensity = (element && index !== FINAL_INDEX ? 28 : 9) * (currentTheme === 'light' ? .35 : 1);
+    if (element) { spotlight.color.set(accentForTheme(element.accent, currentTheme)); spotlight.position.set(element.pos[0], 4, element.pos[1] + 1); }
     move(position, target, instant);
   }
   function metadata(object) {
@@ -314,7 +319,7 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
       if (now < d.delay && d.target) { group.visible = false; routes[i].visible = false; markers[i].hidden = true; return; }
       d.reveal += (d.target - d.reveal) * (reduced ? 1 : 1 - Math.exp(-dt * 5.3)); if (Math.abs(d.target - d.reveal) < .001) d.reveal = d.target;
       group.visible = d.reveal > .005; group.position.y = (1 - d.reveal) * 3.4; group.scale.setScalar(.78 + d.reveal * .22); group.rotation.y = (1 - d.reveal) * -.12;
-      d.line.material.opacity = hovered === i + 1 ? 1 : .7; d.halo.material.opacity = hovered === i + 1 ? .6 : stage === i + 1 ? .42 : .20;
+      d.line.material.opacity = hovered === i + 1 ? 1 : .7; d.halo.material.opacity = (hovered === i + 1 ? .6 : stage === i + 1 ? .42 : .20) * (currentTheme === 'light' ? .28 : 1);
       const route = routes[i]; route.visible = group.visible; route.geometry.setDrawRange(0, Math.floor(route.geometry.index.count * d.reveal / 3) * 3);
       const point = new THREE.Vector3(elements[i].pos[0], 4.25, elements[i].pos[1] - .5).project(camera);
       const x = (point.x + 1) * bounds.width / 2, y = (1 - point.y) * bounds.height / 2;
@@ -324,9 +329,65 @@ export function createDepartmentScene(container, { onOpen, onReady, onError, red
     renderer.render(scene, camera);
     if (!ready) { ready = true; container.dataset.ready = 'true'; onReady(); }
   }
+  function ink(color) {
+    const hex = '#' + color.getHexString();
+    const mapped = accentForTheme(hex, 'light');
+    if (mapped !== hex) return new THREE.Color(mapped);
+    const result = color.clone(), hsl = {}; result.getHSL(hsl);
+    return result.setHSL(hsl.h, Math.max(.45, hsl.s), .18);
+  }
+  function setTheme(value) {
+    currentTheme = value === 'light' ? 'light' : 'dark'; const light = currentTheme === 'light';
+    scene.background.set(light ? '#ffffff' : '#060b16'); scene.fog.color.copy(scene.background);
+    renderer.toneMappingExposure = light ? 1 : 1.15;
+    ambient.color.set(light ? 0xffffff : 0x86b5ff); ambient.groundColor.set(light ? 0xc4d1e2 : 0x12162a); ambient.intensity = light ? 1.4 : 1.8;
+    sun.color.set(light ? 0xffffff : 0x91bbff); sun.intensity = light ? 2.2 : 3.2;
+    fill.color.set(light ? 0xd8dcff : 0xa45cff); fill.intensity = light ? 1.2 : 1.5;
+    const active = elements[Math.min(elements.length, stage) - 1];
+    spotlight.intensity = (active && stage !== FINAL_INDEX ? 28 : 9) * (light ? .35 : 1);
+    if (active) spotlight.color.set(accentForTheme(active.accent, currentTheme));
+    const seen = new Set();
+    scene.traverse(object => {
+      for (const mat of Array.isArray(object.material) ? object.material : object.material ? [object.material] : []) {
+        if (seen.has(mat)) continue; seen.add(mat);
+        if (!materialPalette.has(mat)) materialPalette.set(mat, { color: mat.color?.clone(), emissive: mat.emissive?.clone(), emissiveIntensity: mat.emissiveIntensity, metalness: mat.metalness, roughness: mat.roughness, blending: mat.blending, opacity: mat.opacity });
+        const original = materialPalette.get(mat);
+        if (original.color) mat.color.copy(original.color);
+        if (original.emissive) { mat.emissive.copy(original.emissive); mat.emissiveIntensity = original.emissiveIntensity; }
+        if (original.metalness !== undefined) { mat.metalness = original.metalness; mat.roughness = original.roughness; }
+        const blending = light && original.blending === THREE.AdditiveBlending ? THREE.NormalBlending : original.blending;
+        if (mat.blending !== blending) { mat.blending = blending; mat.needsUpdate = true; }
+        mat.opacity = light && original.blending === THREE.AdditiveBlending ? original.opacity * .35 : original.opacity;
+        if (light && original.color) {
+          if (!mat.map) {
+            if (mat.isMeshStandardMaterial) {
+              const hex = original.color.getHex(), maxChannel = Math.max((hex >> 16) & 255, (hex >> 8) & 255, hex & 255);
+              mat.color.copy(mat.userData.ink ? new THREE.Color(accentForTheme(mat.userData.ink, 'light')) : maxChannel < 105 ? new THREE.Color('#e8eff7').lerp(original.color, .07) : ink(original.color));
+              if (original.emissive) { mat.emissive.copy(ink(original.emissive)); mat.emissiveIntensity = Math.min(.10, original.emissiveIntensity || 0); }
+              mat.metalness = .12; mat.roughness = .62;
+            } else mat.color.copy(ink(original.color));
+          } else if (original.color.getHex() !== 0xffffff) mat.color.copy(ink(original.color));
+        }
+        const map = mat.map, labelData = map?.userData.label;
+        if (labelData && map.userData.paletteTheme !== currentTheme) {
+          const canvas = map.image, ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const originalColor = new THREE.Color(labelData.color);
+          ctx.fillStyle = light ? '#' + ink(originalColor).getHexString() : labelData.color;
+          ctx.font = `500 ${Math.min(66, 1700 / labelData.value.length)}px Rubik`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(labelData.value, canvas.width / 2, canvas.height / 2);
+          map.userData.paletteTheme = currentTheme; map.needsUpdate = true;
+        }
+      }
+    });
+    for (const mat of materialPalette.keys()) if (!seen.has(mat)) materialPalette.delete(mat);
+    floor.material.color.set(light ? '#ffffff' : '#060b16');
+    floor.material.metalness = light ? 0 : .45; floor.material.roughness = light ? .9 : .55;
+    if (floor.material.toneMapped === light) { floor.material.toneMapped = !light; floor.material.needsUpdate = true; }
+    container.dataset.sceneTheme = currentTheme;
+  }
+  setTheme(initialTheme);
   resize(); frameId = requestAnimationFrame(animate);
   return {
-    setChapter, resize,
+    setChapter, resize, setTheme,
     setStoryPhoto(id, asset, selection = {}) {
       photoScreens.get(id)?.set(asset);
       const group = layers.find(layer => layer.userData.element === id);

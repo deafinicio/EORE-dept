@@ -1,6 +1,6 @@
 {
   "name": "eore-dept-presentation",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "private": true,
   "description": "Interactive volunteer introduction for the Kharkiv EORE department",
   "scripts": {

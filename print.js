@@ -1,4 +1,4 @@
-import { chapters, roles, missions, benefits, steps, photos, maps } from './story.js?v=1.4.2';
+import { chapters, roles, missions, benefits, steps, photos, maps } from './story.js?v=1.5.0';
 
 export function createPrintDeck(getRole) {
   const root = document.createElement('div'); root.id = 'print-deck'; root.setAttribute('aria-hidden', 'true');

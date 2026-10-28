@@ -202,6 +202,7 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
         if (width === 390) await page.screenshot({ path: `${root}/test-results/mobile-${id}.png`, fullPage: true });
       }
       await go(page, 2); await page.locator('#open-section').click(); await page.locator('[data-role="education"]').click();
+      assert.equal(await page.locator('.role-options').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true, 'Role choices fit the mobile column');
       await page.locator('.role-caveat').scrollIntoViewIfNeeded(); assert.equal(await page.locator('.role-caveat').isVisible(), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.screenshot({ path: `${root}/test-results/mobile-role-${width}.png`, fullPage: true });
@@ -222,6 +223,10 @@ test('Mobile composition, longest role, dialog focus and swipe', async () => {
         el.dispatchEvent(new TouchEvent('touchstart', { touches: [new Touch({ identifier: 1, target: el, clientX: 290, clientY: 180 })], bubbles: true }));
         el.dispatchEvent(new TouchEvent('touchend', { changedTouches: [new Touch({ identifier: 1, target: el, clientX: 60, clientY: 185 })], bubbles: true }));
       }); await active(page, 'purpose');
+      await go(page, 0); await page.locator('.header .theme-toggle').click();
+      await page.waitForFunction(() => document.querySelector('#viewport').dataset.sceneTheme === 'light');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+      await page.screenshot({ path: `${root}/test-results/light-mobile-${width}.png`, fullPage: true });
     } finally { await context.close(); }
   }
 });
@@ -337,5 +342,49 @@ test('Map frame exposes full application controls, forwarding presenter keys on 
     await frame.locator('#filter').click(); assert.equal(await frame.locator('output').textContent(), 'Фільтр змінено');
     await page.keyboard.press('PageDown'); assert.equal(await page.locator('#inspector').isVisible(), false);
     await page.keyboard.press('PageDown'); await active(page, 'air-map');
+  } finally { await context.close(); }
+});
+
+
+test('Light theme covers the scene and stories, persists, and clicker focus stays unobtrusive', async () => {
+  const { context, page } = await open();
+  try {
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.locator('.header .theme-toggle').click();
+    await page.waitForFunction(() => document.querySelector('#viewport').dataset.sceneTheme === 'light');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    await page.screenshot({ path: `${root}/test-results/light-intro.png` });
+    await go(page, 2); await page.keyboard.press('PageDown');
+    assert.equal(await page.locator('#inspector-title').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+    const layout = await page.locator('.roles-layout').evaluate(el => {
+      const heading = el.querySelector('.section-heading').getBoundingClientRect(), tabs = el.querySelector('.role-options').getBoundingClientRect(), photo = el.querySelector('.role-detail').getBoundingClientRect();
+      return Math.abs(heading.left - tabs.left) < 1 && Math.abs(heading.right - tabs.right) < 1 && photo.top <= heading.top + 1;
+    }); assert.ok(layout, 'Heading matches the left column; photo starts at the top');
+    await fittedPhoto(page.locator('#role-media .media-foreground'));
+    const source = await page.locator('#role-media .media-foreground').getAttribute('src');
+    await page.screenshot({ path: `${root}/test-results/light-roles.png` });
+    await page.locator('#inspector .theme-toggle').click();
+    assert.equal(await page.locator('#viewport').getAttribute('data-scene-theme'), 'dark');
+    assert.equal(await page.locator('#role-media .media-foreground').getAttribute('src'), source);
+    assert.equal(await page.locator('[data-role="communication"]').getAttribute('aria-pressed'), 'true');
+    await page.locator('#inspector .theme-toggle').click(); await page.keyboard.press('PageDown');
+    assert.equal(await page.locator('[data-role="events"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('body').evaluate(el => el.classList.contains('clicker-input')), true);
+    await page.locator('#inspector-title').focus(); await page.keyboard.press('Tab');
+    assert.equal(await page.locator('body').evaluate(el => el.classList.contains('clicker-input')), false);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), 'solid', 'Normal Tab navigation retains its visible focus');
+    await page.keyboard.press('Escape'); await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForFunction(() => document.querySelector('#viewport').dataset.sceneTheme === 'light');
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+    for (const [index, label] of [[1, 'purpose'], [3, 'experience'], [6, 'journey'], [7, 'join']]) {
+      await go(page, index); await page.locator('#guided-next').click();
+      await page.screenshot({ path: `${root}/test-results/light-${label}.png` });
+      await page.keyboard.press('Escape');
+    }
+    await go(page, 7); await page.locator('#cinema-start').click();
+    await page.screenshot({ path: `${root}/test-results/light-cinema.png` });
+    await page.locator('#cinema .theme-toggle').click();
+    assert.equal(await page.locator('#viewport').getAttribute('data-scene-theme'), 'dark');
+    await page.keyboard.press('Escape'); assert.deepEqual(errors, []);
   } finally { await context.close(); }
 });

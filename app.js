@@ -1,10 +1,12 @@
-import { chapters, elements, roles, FINAL_INDEX } from './story.js?v=1.4.2';
-import { createInspector } from './inspector.js?v=1.4.2';
-import { createCinema } from './cinema.js?v=1.4.2';
-import { createPrintDeck } from './print.js?v=1.4.2';
+import { chapters, elements, roles, FINAL_INDEX } from './story.js?v=1.5.0';
+import { createInspector } from './inspector.js?v=1.5.0';
+import { createCinema } from './cinema.js?v=1.5.0';
+import { createPrintDeck } from './print.js?v=1.5.0';
+import { createThemeController } from './theme.js?v=1.5.0';
 const $ = id => document.getElementById(id);
 const pad = number => String(number).padStart(2, '0');
 let index = 0, scene = null, cinema, autoTimer = null, selectedRole = null, showingOverview = false, detailShown = false, finaleShown = false;
+const theme = createThemeController(value => scene?.setTheme(value));
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = motionQuery.matches;
 function stopAuto() {
@@ -91,11 +93,17 @@ function presenterKey(event) {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || cinema?.active || $('help-dialog').open) return;
   if (event.key !== 'PageDown' && event.target?.closest?.('input,textarea,select,[contenteditable=true]')) return;
   if (event.key === 'PageDown' || event.key === 'ArrowRight' || event.code === 'Space') {
+    document.body.classList.add('clicker-input');
     event.preventDefault(); event.stopImmediatePropagation(); if (event.repeat) return; guidedNext();
     // Keep focus in the parent presentation after forwarding a key from a live map.
     if (event.view && event.view !== window) $('guided-next').focus({ preventScroll: true });
   }
 }
+window.addEventListener('keydown', event => {
+  if (event.key === 'Tab') document.body.classList.remove('clicker-input');
+  else if (!event.altKey && !event.ctrlKey && !event.metaKey && ['PageDown', 'PageUp', 'ArrowRight', 'ArrowLeft', ' '].includes(event.key) && !event.target.closest?.('input,textarea,select,[contenteditable=true]')) document.body.classList.add('clicker-input');
+}, true);
+document.addEventListener('pointerdown', () => document.body.classList.remove('clicker-input'), true);
 window.addEventListener('keydown', presenterKey, true);
 $('guided-next').addEventListener('click', guidedNext);
 function currentFromHash() { const current = chapters.findIndex(chapter => `#${chapter.id}` === location.hash); return current < 0 ? 0 : current; }
@@ -181,7 +189,7 @@ applyMotion(); go(currentFromHash(), { history: 'replace', instant: true, focus:
 createPrintDeck(() => selectedRole);
 try {
   await document.fonts.load('500 24px Rubik').catch(() => {});
-  const { createDepartmentScene } = await import('./scene.js?v=1.4.2');
-  scene = createDepartmentScene($('viewport'), { reduced, onOpen: data => inspector.openElement(data.element, data.point, data), onReady: () => $('loading')?.remove(), onError: fallback });
+  const { createDepartmentScene } = await import('./scene.js?v=1.5.0');
+  scene = createDepartmentScene($('viewport'), { reduced, theme: theme.value, onOpen: data => inspector.openElement(data.element, data.point, data), onReady: () => $('loading')?.remove(), onError: fallback });
   const chapter = chapters[index]; scene.setChapter(index, chapter.camera, chapter.look, { instant: true });
 } catch (error) { console.warn('3D unavailable:', error.message); fallback('3D недоступне. Усі історії залишаються доступними через кнопки й каталог.'); }

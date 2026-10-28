@@ -1,4 +1,4 @@
-import {sequences} from './cinema-story.js?v=1.4.2';
+import {sequences} from './cinema-story.js?v=1.5.0';
 
 export function createCinema({onShot,onExit,onComplete,isReduced=()=>false}){
  const root=document.getElementById('cinema'),$=id=>document.getElementById(id);

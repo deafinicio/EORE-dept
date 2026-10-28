@@ -1,6 +1,6 @@
-import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.4.2';
-import { createMedia } from './media.js?v=1.4.2';
-import { createLiveMap } from './live-maps.js?v=1.4.2';
+import { elements, roles, missions, benefits, steps, notes, maps } from './story.js?v=1.5.0';
+import { createMedia } from './media.js?v=1.5.0';
+import { createLiveMap } from './live-maps.js?v=1.5.0';
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
@@ -55,7 +55,7 @@ export function createInspector({ onOpen, getRole, onRole, onMediaChange = () =>
     mediaWalker(media, () => missionIndex, missions.length, select, missions.map(item => item[0]));
   }
   function renderRoles() {
-    body.innerHTML = `${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="roles-layout"><section class="role-content"><div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-copy" aria-live="polite" aria-atomic="true"></div></section><section class="role-detail" aria-label="Фото обраного напряму"><div id="role-media"></div></section></div>`;
+    body.innerHTML = `<div class="roles-layout"><section class="role-content">${heading('Що тобі ближче?', 'Обери інтерес. Подивимося, як він може стати корисним команді.')}<div class="role-options" role="group" aria-label="Можливі напрями участі">${roles.map((role, i) => `<button class="role-option" data-role="${role.id}" aria-pressed="false" style="--role-color:${role.color}"><span>${String(i + 1).padStart(2, '0')} / ОБРАТИ ↗</span><strong>${escape(role.name)}</strong></button>`).join('')}</div><div class="role-copy" aria-live="polite" aria-atomic="true"></div></section><section class="role-detail" aria-label="Фото обраного напряму"><div id="role-media"></div></section></div>`;
     const detail = body.querySelector('.role-detail'), copy = body.querySelector('.role-copy'); let roleIndex = 0;
     const media = makeMedia($('role-media'), { keys: roles[0].photos, label: roles[0].name, onSelect: photo => { onMediaChange('roles', photo, { role: roles[roleIndex].id }); changed(); } });
     function select(id, commit = true) {

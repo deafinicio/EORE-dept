@@ -1,4 +1,4 @@
-import { photos } from './story.js?v=1.4.2';
+import { photos } from './story.js?v=1.5.0';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // The original photographs stay intact; framing and grading belong to the interface.
